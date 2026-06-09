@@ -17,4 +17,4 @@ This repository serves as a professional portfolio containing a collection of pr
 
 ## ⚖️ License
 This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. 
-You are free to use, study, and modify this code, but any derivative works **must** also remain open-source, free, and properly attribute the original author (`Dotlk`). Commercial sale of this code or closed-source redistribution is strictly prohibited.
+You are free to use, study, and modify this code, but any derivative works **must** also remain open-source, free, and properly attribute the original author (`dotlk`). Commercial sale of this code or closed-source redistribution is strictly prohibited.
