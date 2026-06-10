@@ -1,0 +1,458 @@
+# =========================================
+#  Serpens - Kits
+# made by ZworstOne
+# mention lKaerys xD
+# =========================================
+
+#  Comandos:
+#   /kit iniciante  (1x)
+#   /kit comida     (30min)
+
+
+# KIT DOS VIPS
+  #vip-cobra
+#   /kit ifood (1:30hr)
+  #vip-vibora
+#   /kit pot (1:30hr)
+  #vip-hydra
+#   /kit foguete (1:30hr)
+#   /kit util (1:30hr)
+
+
+
+#  Arquivo: kits.sk
+   #dependencies: skbee, permsk, skript placeholders, vault
+# =========================================
+#Funções
+function EntregaItens(p: player, bau: location):: boolean:
+  # Pega itens do baú do kit
+  set {_bau} to inventory of block at {_bau}
+     
+  # Verifica espaço no inventário
+  set {_slotsNecessarios} to 0
+  loop all items in {_bau}:
+    if loop-value is not air:
+      add 1 to {_slotsNecessarios}
+      
+  loop numbers from 0 to 35:
+    set {_item} to slot loop-number of {_p}'s inventory
+    if {_item} is air:
+      add 1 to {_slotsLivres}
+  
+  if {_slotsLivres} < {_slotsNecessarios}:
+    send "{@prefix}&eSlots necessários: &f%{_slotsNecessarios}% &6| &eSlots livres: &f%{_slotsLivres}%" to {_p}
+    send "{@prefix}&cVocê precisa de espaço no inventário para pegar o kit!" to {_p} 
+    return false
+
+  # Entrega
+  loop all items in {_bau}:
+    if loop-value is not air:
+      give {_p} loop-value
+  return true   
+
+options:
+  prefix: &3&l[Serpens] &r
+  cooldownComida: 30 minutes
+  cooldownVIP: 1 day
+  cooldownVIPpvp: 7 days
+
+command /kit [<text>]:
+  permission: serpens.kit.use
+  permission message: {@prefix}&cVocê não tem permissão pra usar kits.
+  trigger:
+    if arg-1 is not set:
+      #AVISA DOS KITS DISPONIVEIS SE ARG-1 FOR VAZIO
+      if player doesn't have permission "is.vip":
+        send "{@prefix}&7Use: &f/kit iniciante &7ou &f/kit comida" to player
+      else: 
+        send "{@prefix}&7Use: &f/kit iniciante &7ou &f/kit comida &7ou &f/kit ifood &7ou &f/kit pot &7ou &f/kit foguete &7ou &f/kit util &7ou &f/kit vibora &7ou &f/kit hydra" to player
+
+    # =========================
+    # /kit iniciante (1x)
+    # =========================
+    if arg-1 is "iniciante":
+      if player doesn't have permission "serpens.kit.iniciante":
+        send "{@prefix}&cVocê não tem permissão pra usar esse kit." to player
+        stop
+
+      if {kit.iniciante.pego::%uuid of player%} is set:
+        send "{@prefix}&cVocê já resgatou o &bKit Iniciante&c. Esse kit é só 1 vez!" to player
+        stop
+        
+      #Entrega
+      if EntregaItens(player, location(-16,60,-43, world named "staff")):
+        set {kit.iniciante.pego::%uuid of player%} to true
+        send "{@prefix}&aVocê resgatou o &bKit Iniciante&a. Boa!" to player
+        stop
+
+    # =========================
+    # /kit comida (30min)
+    # =========================
+    if arg-1 is "comida":
+      if player doesn't have permission "serpens.kit.comida":
+        send "{@prefix}&cVocê não tem permissão pra usar esse kit." to player
+        stop
+      
+      # Checa se foi confirmando
+      if {kit.comida.confirmar::%uuid of player%} is set:
+        delete {kit.comida.confirmar::%uuid of player%}
+        
+        #Cooldown
+        if {kit.comida.last::%uuid of player%} is set:
+          set {_passou} to difference between now and {kit.comida.last::%uuid of player%}
+          if {_passou} is less than {@cooldownComida}:
+            set {_resta} to {@cooldownComida} - {_passou}
+            send "{@prefix}&cVocê já pegou o &eKit Comida&c. Volte em &f%{_resta}%&c."
+            stop
+        
+        #Dinheiro
+        set {_quantia} to value of placeholder "vault_eco_balance" for player parsed as number
+        if {_quantia} < 1000:
+          send "{@prefix}&cVocê precisa de pelo menos &e1000$ &cpara pegar esse kit!" to player
+          stop
+
+        #Entrega
+        if EntregaItens(player, location(-12, 60, -43, world named "staff")):
+          set {kit.comida.last::%uuid of player%} to now
+          remove 1000 from balance of player
+          send "{@prefix}&aVocê resgatou o &eKit Comida&a. Bom proveito!" to player
+          stop
+      
+      # PRIMEIRA VEZ → pede confirmação
+      set {kit.comida.confirmar::%uuid of player%} to true
+
+      send "{@prefix}&eVocê tem certeza que deseja comprar o &6Kit Comida&e por &a1000$&e?" to player
+      send "{@prefix}&7Digite &a/kit comida&e novamente para confirmar." to player
+      send "{@prefix}&7Esse pedido irá expirar em &c10 segundos&7." to player
+
+      # expira em 10 segundos
+      wait 10 seconds
+      if {kit.comida.confirmar::%uuid of player%} is set:
+        delete {kit.comida.confirmar::%uuid of player%}
+        send "{@prefix}&cPedido de &eKit Comida &cexpirou. Use &a/kit comida &cpara tentar novamente." to player
+
+    # =========================
+    # KITS VIPS
+    # =========================
+    if arg-1 is "ifood":
+      if player doesn't have permission "is.vip":
+        send "{@prefix}&cEsse kit é exclusivo para &dVIPs&c!" to player
+        stop
+      else if player doesn't have permission "vip.kit.ifood":
+        send "{@prefix}&cEsse kit exige um vip superior!" to player
+        stop
+        
+      if {kit.vip.ifood.last::%uuid of player%} is set:
+        set {_passou} to difference between now and {kit.vip.ifood.last::%uuid of player%}
+        if {_passou} is less than {@cooldownVIP}:
+          set {_resta} to {@cooldownVIP} - {_passou}
+          send "{@prefix}&cVocê já pegou o &eKit &dVIP &eIfood&c. Volte em &f%{_resta}%&c."
+          stop
+
+      #Entrega
+      if EntregaItens(player, location(-10, 60, -43, world named "staff")):
+        set {kit.vip.ifood.last::%uuid of player%} to now
+        send "{@prefix}&aVocê resgatou o &eKit &dVIP &eIfood&a. Bom proveito!"
+        stop
+
+    if arg-1 is "pot":
+      if player doesn't have permission "is.vip":
+        send "{@prefix}&cEsse kit é exclusivo para &dVIPs&c!" to player
+        stop
+      else if player doesn't have permission "vip.kit.pot":
+        send "{@prefix}&cEsse kit exige um vip superior!" to player
+        stop
+        
+      if {kit.vip.pot.last::%uuid of player%} is set:
+        set {_passou} to difference between now and {kit.vip.pot.last::%uuid of player%}
+        if {_passou} is less than {@cooldownVIP}:
+          set {_resta} to {@cooldownVIP} - {_passou}
+          send "{@prefix}&cVocê já pegou o &eKit &dVIP &ePot&c. Volte em &f%{_resta}%&c."
+          stop
+
+      #Entrega
+      if EntregaItens(player, location(-8, 60, -43, world named "staff")):
+        set {kit.vip.pot.last::%uuid of player%} to now
+        send "{@prefix}&aVocê resgatou o &eKit &dVIP &ePot&a. Bom proveito!"
+        stop
+
+    if arg-1 is "foguete":
+      if player doesn't have permission "is.vip":
+        send "{@prefix}&cEsse kit é exclusivo para &dVIPs&c!" to player
+        stop
+      else if player doesn't have permission "vip.kit.foguete":
+        send "{@prefix}&cEsse kit exige um vip superior!" to player
+        stop
+        
+      if {kit.vip.foguete.last::%uuid of player%} is set:
+        set {_passou} to difference between now and {kit.vip.foguete.last::%uuid of player%}
+        if {_passou} is less than {@cooldownVIP}:
+          set {_resta} to {@cooldownVIP} - {_passou}
+          send "{@prefix}&cVocê já pegou o &eKit &dVIP &eFoguete&c. Volte em &f%{_resta}%&c."
+          stop
+
+      #Entrega
+      if EntregaItens(player, location(-6,60,-43, world named "staff")):
+        set {kit.vip.foguete.last::%uuid of player%} to now
+        send "{@prefix}&aVocê resgatou o &eKit &dVIP &eFoguete&a. Bom proveito!"
+        stop
+    
+    if arg-1 is "util":
+      if player doesn't have permission "is.vip":
+        send "{@prefix}&cEsse kit é exclusivo para &dVIPs&c!" to player
+        stop
+      else if player doesn't have permission "vip.kit.util":
+        send "{@prefix}&cEsse kit exige um vip superior!" to player
+        stop
+        
+      if {kit.vip.util.last::%uuid of player%} is set:
+        set {_passou} to difference between now and {kit.vip.util.last::%uuid of player%}
+        if {_passou} is less than {@cooldownVIP}:
+          set {_resta} to {@cooldownVIP} - {_passou}
+          send "{@prefix}&cVocê já pegou o &eKit &dVIP &eUtil&c. Volte em &f%{_resta}%&c."
+          stop
+      
+      #Entrega
+      if EntregaItens(player, location(-4,60,-43, world named "staff")):
+        set {kit.vip.util.last::%uuid of player%} to now
+        send "{@prefix}&aVocê resgatou o &eKit &dVIP &eUtil&a. Bom proveito!"
+        stop
+
+    if arg-1 is "beta":
+      if player doesn't have permission "serpens.kit.beta":
+        send "{@prefix}&cEsse kit exige um vip superior!" to player
+        stop
+
+      if {kit.beta.pego::%uuid of player%} is set:
+        send "{@prefix}&cVocê já resgatou o &bKit beta&c. Esse kit é só 1 vez!" to player
+        stop
+
+      #Entrega
+      if EntregaItens(player, location(-14,60,-43, world named "staff")):
+        set {kit.beta.pego::%uuid of player%} to true
+        send "{@prefix}&aVocê resgatou o &bKit Beta&a. Boa!"
+        stop
+
+    if arg-1 is "vibora":
+      if player doesn't have permission "is.vip":
+        send "{@prefix}&cEsse kit é exclusivo para &dVIPs&c!" to player
+        stop
+      else if player doesn't have permission "vip.kit.vibora":
+        send "{@prefix}&cEsse kit exige um vip superior!" to player
+        stop
+        
+      if {kit.vip.vibora.last::%uuid of player%} is set:
+        set {_passou} to difference between now and {kit.vip.vibora.last::%uuid of player%}
+        if {_passou} is less than {@cooldownVIPpvp}:
+          set {_resta} to {@cooldownVIPpvp} - {_passou}
+          send "{@prefix}&cVocê já pegou o &eKit &dVIP &eVIBORA&c. Volte em &f%{_resta}%&c."
+          stop
+      
+      #Entrega
+      if EntregaItens(player, location(2,60,-43, world named "staff")):
+        set {kit.vip.vibora.last::%uuid of player%} to now
+        send "{@prefix}&aVocê resgatou o &eKit &dVIP &eVIBORA&a. Bom proveito!"
+        stop
+
+    if arg-1 is "hydra":
+      if player doesn't have permission "is.vip":
+        send "{@prefix}&cEsse kit é exclusivo para &dVIPs&c!" to player
+        stop
+      else if player doesn't have permission "vip.kit.hydra":
+        send "{@prefix}&cEsse kit exige um vip superior!" to player
+        stop
+        
+      if {kit.vip.hydra.last::%uuid of player%} is set:
+        set {_passou} to difference between now and {kit.vip.hydra.last::%uuid of player%}
+        if {_passou} is less than {@cooldownVIPpvp}:
+          set {_resta} to {@cooldownVIPpvp} - {_passou}
+          send "{@prefix}&cVocê já pegou o &eKit &dVIP &eHYDRA&c. Volte em &f%{_resta}%&c."
+          stop
+      
+      #Entrega
+      if EntregaItens(player, location(-2,60,-43, world named "staff")):
+        set {kit.vip.hydra.last::%uuid of player%} to now
+        send "{@prefix}&aVocê resgatou o &eKit &dVIP &eHYDRA&a. Bom proveito!"
+        stop
+
+on tab complete of "/kit":
+  if player has permission "serpens.kit.iniciante":
+    set tab completions for position 1 to "iniciante" and "comida" and "beta"
+
+  if player has permission "is.vip":
+    set tab completions for position 1 to "iniciante" and "comida" and "beta" and "ifood" and "pot" and "foguete" and "util" and "vibora" and "hydra"
+  
+# =========================
+    # KIT RESETS
+# =========================
+
+# reset do kit iniciante
+command /resetkitiniciante <player>:
+  permission: op
+  permission message: {@prefix}&cSem permissão.
+  trigger:
+    delete {kit.iniciante.pego::%uuid of arg-1%}
+    send "{@prefix}&aResetado: kit iniciante do &f%arg-1%&a." to player
+    send "{@prefix}&eSeu kit iniciante foi resetado por um admin." to arg-1
+
+# reset do kit comida 
+command /resetkitcomida <player>:
+  permission: op
+  permission message: {@prefix}&cSem permissão.
+  trigger:
+    delete {kit.comida.last::%uuid of arg-1%}
+    send "{@prefix}&aResetado: kit comida do &f%arg-1%&a." to player
+    send "{@prefix}&eSeu kit comida foi resetado por um admin." to arg-1
+
+# reset do kit ifood
+command /resetkitifood <player>:
+  permission: op
+  permission message: {@prefix}&cSem permissão.
+  trigger:
+    delete {kit.vip.ifood.last::%uuid of arg-1%}
+    send "{@prefix}&aResetado: kit ifood do &f%arg-1%&a." to player
+    send "{@prefix}&eSeu kit ifood foi resetado por um admin." to arg-1
+
+# reset do kit pot
+command /resetkitpot <player>:
+  permission: op
+  permission message: {@prefix}&cSem permissão.
+  trigger:
+    delete {kit.vip.pot.last::%uuid of arg-1%}
+    send "{@prefix}&aResetado: kit pot do &f%arg-1%&a." to player
+    send "{@prefix}&eSeu kit pot foi resetado por um admin." to arg-1
+
+# reset do kit foguete
+command /resetkitfoguete <player>:
+  permission: op
+  permission message: {@prefix}&cSem permissão.
+  trigger:
+    delete {kit.vip.foguete.last::%uuid of arg-1%}
+    send "{@prefix}&aResetado: kit foguete do &f%arg-1%&a." to player
+    send "{@prefix}&eSeu kit foguete foi resetado por um admin." to arg-1
+
+# reset do kit util
+command /resetkitutil <player>:
+  permission: op
+  permission message: {@prefix}&cSem permissão.
+  trigger:
+    delete {kit.vip.util.last::%uuid of arg-1%}
+    send "{@prefix}&aResetado: kit util do &f%arg-1%&a." to player
+    send "{@prefix}&eSeu kit util foi resetado por um admin." to arg-1
+
+# reset do kit beta
+command /resetkitbeta <player>:
+  permission: op
+  permission message: {@prefix}&cSem permissão.
+  trigger:
+    delete {kit.beta.pego::%uuid of arg-1%}
+    send "{@prefix}&aResetado: kit beta do &f%arg-1%&a." to player
+    send "{@prefix}&eSeu kit beta foi resetado por um admin." to arg-1
+
+# reset do kitpvpvibora
+command /resetkitvibora <player>:
+  permission: op
+  permission message: {@prefix}&cSem permissão.
+  trigger:
+    delete {kit.vip.vibora.last::%uuid of arg-1%}
+    send "{@prefix}&aResetado: kit vibora do &f%arg-1%&a." to player
+    send "{@prefix}&eSeu kit vibora foi resetado por um admin." to arg-1
+
+# reset do kitpvphydra
+command /resetkithydra <player>:
+  permission: op
+  permission message: {@prefix}&cSem permissão.
+  trigger:
+    delete {kit.vip.hydra.last::%uuid of arg-1%}
+    send "{@prefix}&aResetado: kit hydra do &f%arg-1%&a." to player
+    send "{@prefix}&eSeu kit hydra foi resetado por um admin." to arg-1
+
+
+
+
+
+
+
+
+
+
+
+
+
+# =========================
+    # KIT ADMIN
+# =========================
+command /kitadmin [<number>] [<number>] [<text>]:
+  permission: op
+  permission message: {@prefix}&cVocê não tem permissão para usar isto.
+  trigger:
+    if arg-1 is not set:
+      send "&c/kitadmin <kit> <distancia> <all/vazio>" to player
+      stop
+    if arg-2 is not set:
+      send "&c/kitadmin <kit> <distancia> <all/vazio>" to player
+      stop
+
+    #Define os itens.
+    clear {_items::*}
+    if arg-1 = 1:
+      set {_bau} to block at location(-23,60,-46, world named "staff")
+      set {_inv} to inventory of {_bau}
+      
+      loop all items in {_inv}:
+        if loop-value is not air:
+          add loop-value to {_items::*}
+
+    else if arg-1 = 2:
+      set {_bau} to block at location(-26,60,-46, world named "staff")
+      set {_inv} to inventory of {_bau}
+
+      loop all items in {_inv}:
+        if loop-value is not air:
+          add loop-value to {_items::*}
+
+    else if arg-1 = 3:
+      set {_bau} to block at location(-29,60,-46, world named "staff")
+      set {_inv} to inventory of {_bau}
+
+      loop all items in {_inv}:
+        if loop-value is not air:
+          add loop-value to {_items::*}
+
+    else:
+      send "&cEsse kit não existe" to player
+      stop
+    
+    #Dá o kit para os players próximos
+    set {_count} to 0
+    loop all players in radius arg-2 around player:
+
+      if arg-3 is not "all":
+        if loop-player is not player:
+          loop {_items::*}:
+            if loop-player-1 has space for loop-value-2:
+              give loop-value-2 to loop-player-1
+            else:
+              drop loop-value-2 at location of loop-player-1
+
+          play sound "block.smithing_table.use" to loop-player
+          send "&aVocê recebeu um kit de um admin!" to loop-player
+          add 1 to {_count}
+      else:
+        loop {_items::*}:
+          if loop-player-1 has space for loop-value-2:
+            give loop-value-2 to loop-player-1
+          else:
+            drop loop-value-2 at location of loop-player-1
+
+        play sound "block.smithing_table.use" at location of loop-player
+        send "&aVocê recebeu um kit de um admin!" to loop-player
+        add 1 to {_count}
+
+    send "&e%{_count}% &aKits distribuídos" to player
+
+on tab complete of "/kitadmin":
+ set tab completions for position 1 to "1" and "2" and "3"
+ set tab completions for position 2 to "distance"
+ set tab completions for position 3 to "all"
+

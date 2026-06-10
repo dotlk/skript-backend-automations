@@ -1,0 +1,538 @@
+# ================================
+#  ServerGUI 
+# ================================
+#  by lKaerys :)
+#dependencies: LuckPerms, SkQuery, PermSK
+# ================================
+#debugs
+command /menuvipsee <player>:
+ permission: op
+ trigger:
+  open (metadata tag "%{Menus::2}%" of arg-1) to player
+  
+command /menuviplimpar <player>:
+ permission: op
+ trigger:
+  loop 45 times:
+   set {_slot} to loop-number - 1
+   set slot {_slot} of metadata tag "%{Menus::2}%" of arg-1 to air
+  send "&d&l[MENU VIP] &r&aMenu de &f&l%arg-1% &r&alimpo!" to player
+
+command /menuviprestaurar <player>:
+ permission: op
+ trigger:
+  #Detecta se há backup
+  if {MenuVipBackup::%arg-1%::*} is set:
+   send "&d&l[MENU VIP] &r&cBackup encontrado para &f&l%arg-1%&r&c!" to player
+   set {_MenuVazio} to true
+
+   #Se o menu tiver item, cancela (não houve perda de itens)
+   loop 45 times:
+    set {_slot} to loop-number - 1
+    if slot {_slot} of metadata tag "%{Menus::2}%" of arg-1 is not air:
+     set {_MenuVazio} to false
+
+   #Se o menu estiver vazio, restaura o backup (houve perda de itens)
+   if {_MenuVazio} is true:
+    restaurarbackupmenuvip(arg-1)
+    send "&d&l[MENU VIP] &r&aBackup restaurado para &f&l%arg-1%&r&a!" to player
+   else:
+    send "&cO menu não está vazio, restauração cancelada!" to player
+    send "&6(&rnão houve perda de itens&6)" to player
+  else:
+   send "&d&l[MENU VIP] &r&cNenhum backup encontrado para &f&l%arg-1%&r&c!" to player
+
+options:
+ # Títulos menus
+  MenuTitle: "&1&lMENU"
+  VipMenuTitle: "&d&lVIP"
+  TagsMenuTitle: "&c&lTAGS"
+  LojaMenuTitle: "&b&lSITE"
+
+on load:
+ #listas
+ #lista de menus
+ delete {Menus::*} #limpa a lista para evitar bugs de reload
+ set {Menus::1} to "ServerMenu"
+ set {Menus::2} to "VipsMenu"
+ set {Menus::3} to "TagsMenu"
+
+ #lista de tags ID
+ delete {TagsList::*} #limpa a lista para evitar bugs de reload
+ set {TagsList::1} to "vip-cobra"
+ set {TagsList::2} to "vip-vibora"
+ set {TagsList::3} to "vip-hydra"
+ set {TagsList::4} to "youtube"
+ set {TagsList::5} to "streamer"
+ set {TagsList::6} to "betatester"
+ set {TagsList::7} to "dragontamer"
+ set {TagsList::8} to "mitodopvp"
+ set {TagsList::9} to "magnata"
+ set {TagsList::10} to "gladiador"
+ set {TagsList::11} to "destemido"
+ set {TagsList::12} to "exploiter"
+ set {TagsList::13} to "top1"
+ set {Tagslist::20} to "helper"
+
+ #lista de tags PREFIXOS
+ delete {TagsListPrefix::*} #limpa a lista para evitar bugs de reload
+ set {TagsListPrefix::1} to "&a[&2&lCOBRA&a] 🐍"
+ set {TagsListPrefix::2} to "&e[&6&lVIBORA&e] 🐍"
+ set {TagsListPrefix::3} to "&d[&5&lHYDRA&d] 🐍"
+ set {TagsListPrefix::4} to "&c&l[YOUTUBER] &f▶"
+ set {TagsListPrefix::5} to "&5[&d&lLIVE&5] &f⏸"
+ set {TagsListPrefix::6} to "&1&l[&9&lBEATER&1&l]"
+ set {TagsListPrefix::7} to "&5&lDragon &d🐉"
+ set {TagsListPrefix::8} to "&4[&cMitoDoPVP&4]"
+ set {TagsListPrefix::9} to "&6[&aMagnata&6]"
+ set {TagsListPrefix::10} to "&4[&6Gladiador&4]"
+ set {TagsListPrefix::11} to "&c[&4Destemido&c]" 
+ set {TagsListPrefix::12} to "&0[&2&kExploiter&0]"
+ set {TagsListPrefix::13} to "&6[&c&lAURA&6]"
+ set {TagsListPrefix::20} to "&eHelper &f<&e&l❓&f>"
+#OBS: O nome da tag tem que estar no mesmo Index que o nome do grupo da tag na lista de tags ID
+#     para que a lógica do menu linke o nome com o ID na seleção da tag.
+
+on join:
+ # Cria menu #####
+ set metadata tag "%{Menus::1}%" of player to chest inventory with 3 rows named {@MenuTitle}
+ set slot 11 of metadata tag "%{Menus::1}%" of player to minecraft:end_crystal named {@VipMenuTitle}
+ set slot 13 of metadata tag "%{Menus::1}%" of player to skull of player named {@TagsMenuTitle}
+
+ set {_site.serpens} to wind_charge
+ set item model of {_site.serpens} to "minecraft:st_serpens"
+ set slot 15 of metadata tag "%{Menus::1}%" of player to glowing {_site.serpens} named {@LojaMenuTitle}
+ 
+
+ # Cria sub menus
+ # MENU VIP #####################################
+ if metadata tag "%{Menus::2}%" of player is not set:
+  set metadata tag "%{Menus::2}%" of player to chest inventory with 6 rows named "%{@VipMenuTitle}% &8| &f%player%"
+  set slot 49 of metadata tag "%{Menus::2}%" of player to minecraft:redstone_torch named "&4&lVOLTAR"
+
+ #Detecta se há backup MENU VIP
+ if {MenuVipBackup::%player%::*} is set:
+  send "debug1" to console
+  set {_MenuVazio} to true
+
+  #Se o menu tiver item, cancela (não houve perda de itens)
+  loop 45 times:
+   set {_slot} to loop-number - 1
+   if slot {_slot} of metadata tag "%{Menus::2}%" of player is not air:
+    set {_MenuVazio} to false
+  #Se o menu estiver vazio, restaura o backup (houve perda de itens)
+  if {_MenuVazio} is true:
+   restaurarbackupmenuvip(player)
+   send "&d&l[MENU VIP] &r&aBackup restaurado para &f&l%player%&r&a!" to console
+
+ # MENU TAGS #####################################
+ set metadata tag "%{Menus::3}%" of player to chest inventory with 6 rows named {@TagsMenuTitle}
+ set slot 49 of metadata tag "%{Menus::3}%" of player to minecraft:redstone_torch named "&4&lVOLTAR"
+
+#Funções
+function CarregaTags(p: player):
+
+ #Limpa inventário
+ set {_slot} to 0
+ loop 54 times: # inventário de 6 linhas tem slots 0 a 53
+  if {_slot} = 49: # pulando o slot do voltar 
+   add 1 to {_slot}
+  else:
+   set slot {_slot} of metadata tag "%{Menus::3}%" of {_p} to minecraft:air
+   add 1 to {_slot}
+
+ #Cria as tags que o player tem permissão
+ set {_slot} to 0
+ loop {TagsList::*}:
+  if {_slot} = 49: # pulando o slot do voltar 
+   add 1 to {_slot}
+  else if {_p} has permission "group.%{TagsList::%loop-index%}%":
+   set slot {_slot} of metadata tag "%{Menus::3}%" of {_p} to skull of {_p} named "%{TagsListPrefix::%loop-index%}%"
+   add 1 to {_slot}
+
+function CarregaMenuVIPbuttons(p: player):
+ #Carrega botões kit
+ if {Kit.VIPCOBRA.Resgate::%{_p}%} is not set:
+  set slot 51 of metadata tag "%{Menus::2}%" of {_p} to minecraft:green_shulker_box named "&2&lKIT COBRA" with lore "&bDisponível: &f0 &bresgates"
+ else:
+  set slot 51 of metadata tag "%{Menus::2}%" of {_p} to minecraft:green_shulker_box named "&2&lKIT COBRA" with lore "&bDisponível: &f%{Kit.VIPCOBRA.Resgate::%{_p}%}% &bresgates"
+
+ if {Kit.VIPVIBORA.Resgate::%{_p}%} is not set:
+  set slot 52 of metadata tag "%{Menus::2}%" of {_p} to minecraft:orange_shulker_box named "&6&lKIT VIBORA" with lore "&bDisponível: &f0 &bresgates"
+ else:
+  set slot 52 of metadata tag "%{Menus::2}%" of {_p} to minecraft:orange_shulker_box named "&6&lKIT VIBORA" with lore "&bDisponível: &f%{Kit.VIPVIBORA.Resgate::%{_p}%}% &bresgates"
+
+ if {Kit.VIPHYDRA.Resgate::%{_p}%} is not set:
+  set slot 53 of metadata tag "%{Menus::2}%" of {_p} to minecraft:purple_shulker_box named "&5&lKIT HYDRA" with lore "&bDisponível: &f0 &bresgates"
+ else:
+  set slot 53 of metadata tag "%{Menus::2}%" of {_p} to minecraft:purple_shulker_box named "&5&lKIT HYDRA" with lore "&bDisponível: &f%{Kit.VIPHYDRA.Resgate::%{_p}%}% &bresgates"
+ 
+ #Contador de tempo restante dos vips - skript placeholders dependent
+ set {_MaiorVip} to value of placeholder "luckperms_last_group_on_tracks_vip" for {_p}
+ clear {_TempoRestanteVip}
+ clear {_nivelvip}
+ if {_MaiorVip} is "vip-hydra":
+  set {_TempoRestanteVip} to value of placeholder "luckperms_group_expiry_time_vip-hydra" for {_p}
+  set {_nivelvip} to "&dHydra"
+ else if {_MaiorVip} is "vip-vibora":
+  set {_TempoRestanteVip} to value of placeholder "luckperms_group_expiry_time_vip-vibora" for {_p}
+  set {_nivelvip} to "&6Vibora"
+ else if {_MaiorVip} is "vip-cobra":
+  set {_TempoRestanteVip} to value of placeholder "luckperms_group_expiry_time_vip-cobra" for {_p}
+  set {_nivelvip} to "&2Cobra"
+
+ #Formata valor ---------
+ 
+ set {_years} to 0
+ set {_months} to 0
+ set {_weeks} to 0
+ set {_days} to 0
+ set {_hours} to 0
+ set {_minutes} to 0
+ set {_seconds} to 0
+
+ # Lê cada parte do tempo
+ loop {_TempoRestanteVip} split at " ":
+  set {_part} to loop-value
+
+  if {_part} contains "y":
+   replace "y" with "" in {_part}
+   set {_years} to {_part} parsed as number
+
+  else if {_part} contains "mo":
+   replace "mo" with "" in {_part}
+   set {_months} to {_part} parsed as number
+
+  else if {_part} contains "w":
+   replace "w" with "" in {_part}
+   set {_weeks} to {_part} parsed as number
+
+  else if {_part} contains "d":
+   replace "d" with "" in {_part}
+   set {_days} to {_part} parsed as number
+
+  else if {_part} contains "h":
+   replace "h" with "" in {_part}
+   set {_hours} to {_part} parsed as number
+
+  else if {_part} contains "m":
+   replace "m" with "" in {_part}
+   set {_minutes} to {_part} parsed as number
+
+  else if {_part} contains "s":
+   replace "s" with "" in {_part}
+   set {_seconds} to {_part} parsed as number
+
+ # Converte tudo pra minutos
+ set {_totalMinutes} to ((((({_years} * 365) + ({_months} * 30) + ({_weeks} * 7) + {_days}) * 24) + {_hours}) * 60) + {_minutes}
+
+ # Arredonda pra cima se tiver segundos
+ if {_seconds} > 0:
+  add 1 to {_totalMinutes}
+ 
+ #Formatação final ---------
+
+ # Dias totais
+ set {_totalDays} to floor({_totalMinutes} / 1440)
+
+ # Se tiver 1 dia ou mais -> mostra apenas dias
+ if {_totalDays} >= 1:
+  if {_totalDays} is 1:
+   set {_TempoRestanteVip} to "1 dia"
+  else:
+   set {_TempoRestanteVip} to "%{_totalDays}% dias"
+
+ # Menos de 1 dia -> mostra horas e minutos
+ else:
+  set {_hoursLeft} to floor({_totalMinutes} / 60)
+  set {_minutesLeft} to {_totalMinutes} mod 60
+
+  if {_hoursLeft} >= 1:
+   set {_TempoFormatado} to "%{_hoursLeft}%h %{_minutesLeft}%m"
+  else:
+   set {_TempoFormatado} to "%{_minutesLeft}%m"
+
+ #Atualiza nome do inv
+ set {_oldInv} to metadata tag "%{Menus::2}%" of {_p}
+ # Cria novo inventário com o novo nome
+ set {_newInv} to chest inventory with 6 rows named "&8VIP %{_nivelvip}% &8| &8Restam: &8%{_TempoRestanteVip}%"
+
+ # Copia todos os slots
+ loop 54 times:
+  set slot (loop-number - 1) of {_newInv} to slot (loop-number - 1) of {_oldInv}
+
+ # Substitui o inventário salvo
+ set metadata tag "%{Menus::2}%" of {_p} to {_newInv}
+
+function GeraItensMenu(p: player, bau: location):
+ # Pega itens do baú do kit
+ set {_bau} to inventory of block at {_bau}
+
+ # Gera itens no Menu
+ set {_slot} to 0
+ loop all items in {_bau}:
+  set slot {_slot} of metadata tag "%{Menus::2}%" of {_p} to loop-value
+  add 1 to {_slot}
+
+function KitVipCobra(p: player):
+ if {Kit.VIPCOBRA.Resgate::%{_p}%} is not set: #Checa se possui resgates
+  play sound "entity.cat.ambient" for {_p}
+  send "&cVocê não possui resgates para esse kit!" to {_p}
+  stop
+
+ set {_slot} to 0
+ loop 45 times: #Analisa os slots das 5 linhas do MenuVIP, se houver algum item, cancela.
+  if slot {_slot} of metadata tag "%{Menus::2}%" of {_p} is not air:
+   play sound "entity.cat.ambient" for {_p}
+   send "&cRecolha todos os items do menu!" to {_p}
+   stop
+  add 1 to {_slot} 
+
+ play sound "entity.experience_orb.pickup" for {_p}
+ #Gera itens no menu
+ GeraItensMenu({_p}, location(-16,60,-47, world named "staff"))
+ 
+ #Registra uso e atualiza contador do botão
+ remove 1 from {Kit.VIPCOBRA.Resgate::%{_p}%}
+ if {Kit.VIPCOBRA.Resgate::%{_p}%} = 0:
+  delete {Kit.VIPCOBRA.Resgate::%{_p}%}
+
+ if {Kit.VIPCOBRA.Resgate::%{_p}%} is not set:
+  set slot 51 of metadata tag "%{Menus::2}%" of {_p} to minecraft:green_shulker_box named "&2&lKIT COBRA" with lore "&bDisponível: &f0 &bresgates"
+ else:
+  set slot 51 of metadata tag "%{Menus::2}%" of {_p} to minecraft:green_shulker_box named "&2&lKIT COBRA" with lore "&bDisponível: &f%{Kit.VIPCOBRA.Resgate::%{_p}%}% &bresgates"
+
+
+
+function KitVipVibora(p: player):
+ if {Kit.VIPVIBORA.Resgate::%{_p}%} is not set: #Checa se possui resgates
+  play sound "entity.cat.ambient" for {_p}
+  send "&cVocê não possui resgates para esse kit!" to {_p}
+  stop
+
+ set {_slot} to 0
+ loop 45 times: #Analisa os slots das 5 linhas do MenuVIP, se houver algum item, cancela.
+  if slot {_slot} of metadata tag "%{Menus::2}%" of {_p} is not air:
+   play sound "entity.cat.ambient" for {_p}
+   send "&cRecolha todos os items do menu!" to {_p}
+   stop
+  add 1 to {_slot}
+ 
+ play sound "entity.experience_orb.pickup" for {_p} 
+ #Gera itens no menu
+ GeraItensMenu({_p}, location(-14,60,-47, world named "staff"))
+ 
+ #Registra uso e atualiza contador do botão
+ remove 1 from {Kit.VIPVIBORA.Resgate::%{_p}%}
+ if {Kit.VIPVIBORA.Resgate::%{_p}%} = 0:
+  delete {Kit.VIPVIBORA.Resgate::%{_p}%}
+
+ if {Kit.VIPVIBORA.Resgate::%{_p}%} is not set:
+  set slot 52 of metadata tag "%{Menus::2}%" of {_p} to minecraft:orange_shulker_box named "&6&lKIT VIBORA" with lore "&bDisponível: &f0 &bresgates"
+ else:
+  set slot 52 of metadata tag "%{Menus::2}%" of {_p} to minecraft:orange_shulker_box named "&6&lKIT VIBORA" with lore "&bDisponível: &f%{Kit.VIPVIBORA.Resgate::%{_p}%}% &bresgates"
+
+
+
+function KitVipHydra(p: player):
+ if {Kit.VIPHYDRA.Resgate::%{_p}%} is not set: #Checa se possui resgates
+  play sound "entity.cat.ambient" for {_p}
+  send "&cVocê não possui resgates para esse kit!" to {_p}
+  stop
+
+ set {_slot} to 0
+ loop 45 times: #Analisa os slots das 5 linhas do MenuVIP, se houver algum item, cancela.
+  if slot {_slot} of metadata tag "%{Menus::2}%" of {_p} is not air:
+   play sound "entity.cat.ambient" for {_p}
+   send "&cRecolha todos os items do menu!" to {_p}
+   stop
+  add 1 to {_slot}
+ 
+ play sound "entity.experience_orb.pickup" for {_p}
+ #Gera itens no menu
+ GeraItensMenu({_p}, location(-11,60,-47, world named "staff"))
+
+ #Registra uso e atualiza contador do botão
+ remove 1 from {Kit.VIPHYDRA.Resgate::%{_p}%}
+ if {Kit.VIPHYDRA.Resgate::%{_p}%} = 0:
+  delete {Kit.VIPHYDRA.Resgate::%{_p}%}
+
+ if {Kit.VIPHYDRA.Resgate::%{_p}%} is not set:
+  set slot 53 of metadata tag "%{Menus::2}%" of {_p} to minecraft:purple_shulker_box named "&5&lKIT HYDRA" with lore "&bDisponível: &f0 &bresgates"
+ else:
+  set slot 53 of metadata tag "%{Menus::2}%" of {_p} to minecraft:purple_shulker_box named "&5&lKIT HYDRA" with lore "&bDisponível: &f%{Kit.VIPHYDRA.Resgate::%{_p}%}% &bresgates"
+
+#Função para salvar backup do menu vip, para evitar perda em caso de bugs ou reinício inesperado
+function salvarbackupmenuvip(p: player):
+ wait 1 tick
+ set {_inv} to metadata tag "%{Menus::2}%" of {_p}
+ 
+ # Limpa backup antigo.
+ if {MenuVipBackup::%{_p}%::*} is set:
+  delete {MenuVipBackup::%{_p}%::*}
+ 
+ # Se tiver items no menu, salva no backup
+ loop 45 times:
+  set {_slot} to loop-number - 1
+  if slot {_slot} of {_inv} is not air:
+   set {MenuVipBackup::%{_p}%::%{_slot}%} to slot {_slot} of {_inv}
+
+function restaurarbackupmenuvip(p: player):
+ set {_inv} to metadata tag "%{Menus::2}%" of {_p}
+ 
+ # Restaura itens do backup para o menu
+ loop {MenuVipBackup::%{_p}%::*}:
+  set slot loop-index parsed as number of {_inv} to {MenuVipBackup::%{_p}%::%loop-index%}
+ 
+#Comandos 
+command /menu:
+ trigger:
+  play sound "BLOCK_NOTE_BLOCK_PLING" for player
+  open (metadata tag "%{Menus::1}%" of player) to player
+
+command /vip:
+ trigger:
+  if player has permission "is.vip":
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   CarregaMenuVIPbuttons(player)
+   open (metadata tag "%{Menus::2}%" of player) to player
+  else:
+   play sound "entity.cat.ambient" for player
+   send "&cVocê não é VIP!" to player
+
+command /tags:
+ trigger:
+  play sound "BLOCK_NOTE_BLOCK_PLING" for player
+  CarregaTags(player)
+  open (metadata tag "%{Menus::3}%" of player) to player
+
+command /site:
+ trigger:
+  play sound "BLOCK_NOTE_BLOCK_PLING" for player
+  send "&fAcesse nosso &b&lWebSite&f!" to player
+  send "<link:https://www.serpenscorp.com.br>&b&nClique aqui<reset>" to player
+
+command /dc:
+ trigger:
+  play sound "BLOCK_NOTE_BLOCK_PLING" for player
+  send "&fAcesse nosso &d&ldiscord&f!" to player
+  send "<link:https://discord.gg/ruy7qUjxRF>&d&nClique aqui<reset>" to player
+
+#Cliques Menu------------------------------------
+on inventory click:
+ #Não deixa player pegar ou colocar items ---BLOQUEIO DE CLIQUE---
+ loop {Menus::*}:
+  if player's current inventory is (metadata tag "%{Menus::%loop-index%}%" of player):
+   if loop-index is not "2": #Ignora o MenuVIP
+    cancel event
+
+ #Condiciona apenas para o MenuVip 
+ if player's current inventory is (metadata tag "%{Menus::2}%" of player): 
+   
+  # trava slots dos botões
+  set {_slot} to 44 
+  loop 9 times: 
+   add 1 to {_slot}
+   if event-slot is {_slot}:
+    cancel event
+  
+  if event-inventory is (metadata tag "%{Menus::2}%" of player):
+   if event-slot is not air:
+    salvarbackupmenuvip(player) #Salva backup do menu vip para evitar perda de itens em caso de bugs ou reinício inesperado
+
+  if event-inventory is player inventory: #Não deixa colocar itens no MenuVip
+   cancel event
+
+
+ # MENU ###############################
+ if event-inventory = (metadata tag "%{Menus::1}%" of player):
+  #Lógica dos botões
+  
+  # VIP #####################################
+  if index of event-slot is 11:
+   if player has permission "is.vip":
+    play sound "BLOCK_NOTE_BLOCK_PLING" for player
+    CarregaMenuVIPbuttons(player)
+    wait 2 tick
+    open (metadata tag "%{Menus::2}%" of player) to player
+   else:
+    play sound "entity.cat.ambient" for player
+    send "&cVocê não é VIP!" to player
+
+  # TAGS #####################################
+  if index of event-slot is 13:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   CarregaTags(player)
+   wait 2 tick
+   open (metadata tag "%{Menus::3}%" of player) to player
+   
+  # SITE #####################################
+  if index of event-slot is 15:
+   close inventory of player
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   send "&fAcesse nosso &b&lWebSite&f!" to player
+   send "<link:https://www.serpenscorp.com.br>&b&nClique aqui<reset>" to player
+
+ # MENU VIP ###############################
+ if event-inventory = (metadata tag "%{Menus::2}%" of player):
+  #Lógica dos botões
+
+  if index of event-slot is 49:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   wait 2 tick
+   open (metadata tag "%{Menus::1}%" of player) to player
+  
+  if index of event-slot is 51:
+   KitVipCobra(player)
+  if index of event-slot is 52:
+   KitVipVibora(player)
+  if index of event-slot is 53:
+   KitVipHydra(player)
+
+ # MENU TAGS ###############################
+ if event-inventory = (metadata tag "%{Menus::3}%" of player):
+  #Lógica dos botões
+  if index of event-slot is 49:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   wait 2 tick
+   open (metadata tag "%{Menus::1}%" of player) to player
+
+  set {_EventSlot} to index of event-slot
+  set {_Item} to name of event-item
+  clear {_TagID}
+  set {_PrimaryGroup} to primary group of player
+
+  #Não ativa se for ar ou se for o slot 49 (voltar)
+  if event-slot is not air:
+   if {_EventSlot} is not 49:
+    #Pega o ID da tag clicada
+    loop {TagsListPrefix::*}:
+     if {_Item} is {TagsListPrefix::%loop-index%}:
+      set {_TagID} to loop-index
+
+    #Coloca a tag do user se tiver desativada 
+    if {_PrimaryGroup} is not {TagsList::%{_TagID}%}:
+     play sound "ENTITY_VILLAGER_YES" for player
+     execute console command "lp user %player% parent switchprimarygroup %{TagsList::%{_TagID}%}%"
+     send "&a✔ Tag atualizada!" to player
+
+    #tira a tag do user se tiver ativa
+    else if {_PrimaryGroup} is {TagsList::%{_TagID}%}:
+     play sound "ENTITY_VILLAGER_NO" for player
+     execute console command "lp user %player% parent switchprimarygroup default"
+     send "&c✖ Tag removida!" to player
+
+    #REMOVE O GRUPO PERMANENTE após setar a tag de grupos temporários (bug do lp) (vips.. etc)
+    if {TagsList::%{_TagID}%} is "vip-cobra": 
+     execute console command "lp user %player% parent remove %{TagsList::%{_TagID}%}%"
+    else if {TagsList::%{_TagID}%} is "vip-vibora": 
+     execute console command "lp user %player% parent remove %{TagsList::%{_TagID}%}%"
+    else if {TagsList::%{_TagID}%} is "vip-hydra": 
+     execute console command "lp user %player% parent remove %{TagsList::%{_TagID}%}%"
+    else if {TagsList::%{_TagID}%} is "exploiter": 
+     execute console command "lp user %player% parent remove %{TagsList::%{_TagID}%}%"
+#------------------------------------
+  
+       
+        
+

@@ -1,0 +1,268 @@
+#dependencies: Skbee
+
+#Variaveis
+on load:
+ if {EndAberto} is not set:
+  set {EndAberto} to false
+
+# Bloqueia Crafting EnderChest
+on craft of ender chest:
+ cancel event
+ send "&cO Ender Chest não pode ser craftado! :)" to player
+ play sound "entity.cat.ambient" for player
+on crafter craft:
+ if recipe result is ender chest:
+  cancel event
+  
+# Bloqueia respawn nas camas
+#on respawn:
+    #set respawn location to location(-319, 117, -498, world "world")
+    #send "&cVocê não pode usar camas para respawn! >:D" to player
+    
+# Limita elytra
+on break: #Bloqueia quebra do bloco atrás do item frame
+ if world of event-block is "world_The_end": 
+  loop entities in radius 1 around event-block: 
+   if loop-entity is item frame:
+    if item of loop-entity is elytra:
+     send "&cVocê não pode quebrar esse bloco." to player
+     cancel event
+
+on damage: #Inicia RNG da elytra 
+ if world of victim is "world_The_end":
+  if victim is item frame:
+   if attacker is not a player:
+    cancel event 
+
+   else if item of victim is elytra:
+    set {_rng} to random integer between 1 and 100 
+    if {_rng} <= 30:
+     send "&aVocê conseguiu uma Elytra!" to attacker
+     play sound "ui.toast.challenge_complete" for attacker
+     execute console command "channel announce global &dO player &f%attacker% &dconseguiu uma elytra! &6GG&d!"
+    else:
+     send "&cA Elytra se desfez..." to attacker
+     play sound "entity.cat.ambient" for attacker
+     set item of victim to air
+
+#Bloqueia End
+on right click:
+ if {EndAberto} is false:
+  if world of event-block is "world":
+   if event-block is end portal frame:
+    if tool is ender eye:
+     cancel event
+     send "&cO portal do End está desativado no momento." to player
+     play sound "entity.cat.ambient" for player
+
+command /endportal:
+ permission: op
+ permission message: &cVocê não tem permissão para abrir ou fechar o end.
+ trigger:
+  if {EndAberto} is true:
+   set {EndAberto} to false
+   execute console command "channel announce global &dO portal do End foi &cfechado!"
+   play sound "entity.ender_dragon.hurt" for all players
+  else if {EndAberto} is false:
+   set {EndAberto} to true
+   execute console command "channel announce global &dO portal do End foi &aaberto! &dPreparem-se para a batalha!"
+   play sound "entity.ender_dragon.growl" for all players
+   play sound "entity.experience_orb.pickup" for all players
+
+#Cooldown RTP - Skript-citizens dependent
+on npc right click:
+ if citizen id of event-npc is 14:
+  
+  # Checa se foi confirmando
+  if {cooldown::rtp.confirmar::%uuid of player%} is set:
+   delete {cooldown::rtp.confirmar::%uuid of player%}
+
+   if {cooldown::rtp::%player%} is set:
+    if {cooldown::rtp::%player%} > now:
+     set {_tempo} to difference between {cooldown::rtp::%player%} and now
+     send "&cAguarde %{_tempo}% para usar novamente!" to player
+     cancel event
+     stop 
+  
+   #Executa
+   set {cooldown::rtp::%player%} to now + 5 minutes
+   stop 
+
+  # PRIMEIRA VEZ → pede confirmação
+  set {cooldown::rtp.confirmar::%uuid of player%} to true
+
+  send "&eVocê tem certeza que deseja utilizar o rtp?" to player
+  send "&eclique no npc novamente para confirmar." to player
+  send "&7Esse pedido irá expirar em &c10 segundos&7." to player
+  cancel event
+
+  # expira em 10 segundos
+  wait 10 seconds
+  if {cooldown::rtp.confirmar::%uuid of player%} is set:
+   delete {cooldown::rtp.confirmar::%uuid of player%}
+   send "&cPedido de &eRTP &cexpirou. Use o npc para tentar novamente." to player
+
+command /rtp:
+ trigger:
+  send "&fUse o NPC no spawn para se teleportar! /warp spawn" to player
+
+command /resetrtp <player>:
+ permission: op
+ permission message: &cVocê não possui permissão.
+ trigger:
+  delete {cooldown::rtp::%arg-1%}
+  send "&aResetado: RTP de &f%arg-1%&a." to player
+  send "&eSeu RTP foi resetado por um admin." to arg-1
+
+#Cooldown WARP SPAWN ,HOME, TPA (tpa com preço)
+on command "warp":
+ if arg-1 is "Spawn":
+  if player has permission "tab.staff":
+   stop
+  
+  if {cooldown::warp.spawn::%player%} is set:
+   if {cooldown::warp.spawn::%player%} > now:
+    set {_tempo} to difference between {cooldown::warp.spawn::%player%} and now
+    send "&cAguarde %{_tempo}% para usar novamente!" to player
+    cancel event
+    stop 
+  
+  #Executa
+  set {cooldown::warp.spawn::%player%} to now + 1 minute and 30 seconds
+  stop 
+
+ if arg-1 is "Loja":
+  if player has permission "tab.staff":
+   stop
+  
+  if {cooldown::warp.loja::%player%} is set:
+   if {cooldown::warp.loja::%player%} > now:
+    set {_tempo} to difference between {cooldown::warp.loja::%player%} and now
+    send "&cAguarde %{_tempo}% para usar novamente!" to player
+    cancel event
+    stop 
+  
+  #Executa
+  set {cooldown::warp.loja::%player%} to now + 1 minute and 30 seconds
+  stop 
+
+command /resetwarpspawn <player>:
+ permission: op
+ permission message: &cVocê não possui permissão.
+ trigger:
+  delete {cooldown::warp.spawn::%arg-1%}
+  send "&aResetado: Warp de &f%arg-1%&a." to player
+  send "&eSeu warp Spawn foi resetado por um admin." to arg-1
+
+command /resetwarploja <player>:
+ permission: op
+ permission message: &cVocê não possui permissão.
+ trigger:
+  delete {cooldown::warp.loja::%arg-1%}
+  send "&aResetado: Warp de &f%arg-1%&a." to player
+  send "&eSeu warp Loja foi resetado por um admin." to arg-1
+
+#on command "home":
+ #if player has permission "tab.staff":
+ # stop
+
+on command "tpa":
+ if player has permission "tab.staff":
+  stop
+ 
+ set {_target} to arg-1 parsed as player
+ #não pode tpa para si mesmo
+ if {_target} is player:
+  stop 
+
+ #se nao for um player
+ if {_target} is not set:
+  stop
+
+ if arg-1 is set:
+  if {tpa.confirmar::%uuid of player%} is set:
+   delete {tpa.confirmar::%uuid of player%}
+  
+   #cooldown
+   if {cooldown::tpa::%player%} is set:
+    if {cooldown::tpa::%player%} > now:
+     set {_tempo} to difference between {cooldown::tpa::%player%} and now
+     send "&cAguarde %{_tempo}% para usar novamente!" to player
+     cancel event
+     stop 
+
+   #Executa
+   set {cooldown::tpa::%player%} to now + 1 minute
+   stop
+  
+  # PRIMEIRA VEZ → pede confirmação
+  set {tpa.confirmar::%uuid of player%} to true
+
+  send "&eVocê tem certeza que deseja utilizar esse comando?" to player
+  send "&c&lSe você se mover, terá que esperar 1 minuto!" to player
+  send "&7Digite &a/tpa <player>&e novamente para confirmar." to player
+  send "&7Esse pedido irá expirar em &c10 segundos&7." to player
+  cancel event
+
+  # expira em 10 segundos
+  wait 10 seconds
+  if {tpa.confirmar::%uuid of player%} is set:
+   delete {tpa.confirmar::%uuid of player%}
+   send "&cPedido de &eTPA &cexpirou. Use &a/tpa &cpara tentar novamente." to player
+
+command /resettpa <player>:
+ permission: op
+ permission message: &cVocê não possui permissão.
+ trigger:
+  delete {cooldown::tpa::%arg-1%}
+  send "&aResetado: tpa de &f%arg-1%&a." to player
+  send "&eSeu tpa foi resetado por um admin." to arg-1
+
+
+
+
+#on command "tpa":
+# if player has permission "tab.staff":
+#  stop
+ 
+# set {_target} to arg-1 parsed as player
+# #não pode tpa para si mesmo
+# if {_target} is player:
+#  stop 
+
+# #se nao for um player
+# if {_target} is not set:
+#  stop
+
+# if arg-1 is set:
+#  if {tpa.confirmar::%uuid of player%} is set:
+#   delete {tpa.confirmar::%uuid of player%}
+  
+#   #Dinheiro
+#   set {_quantia} to value of placeholder "vault_eco_balance" for player parsed as number
+#   if {_quantia} < 300:
+#    send "&cVocê precisa de pelo menos &e300$ &cpara usar esse comando!" to player
+#    cancel event
+#    stop
+
+#   #Executa
+#   remove 300 from balance of player
+#   stop
+  
+#  # PRIMEIRA VEZ → pede confirmação
+#  set {tpa.confirmar::%uuid of player%} to true
+
+#  send "&eVocê tem certeza que deseja utilizar esse comando por &a300$&e?" to player
+#  send "&c&lSe você se mover, não terá seu dinheiro de volta!" to player
+#  send "&7Digite &a/tpa <player>&e novamente para confirmar." to player
+#  send "&7Esse pedido irá expirar em &c10 segundos&7." to player
+#  cancel event
+
+#  # expira em 10 segundos
+#  wait 10 seconds
+#  if {tpa.confirmar::%uuid of player%} is set:
+#   delete {tpa.confirmar::%uuid of player%}
+#   send "&cPedido de &eTPA &cexpirou. Use &a/tpa &cpara tentar novamente." to player
+
+
+

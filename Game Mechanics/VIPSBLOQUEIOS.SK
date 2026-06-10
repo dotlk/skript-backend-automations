@@ -1,0 +1,182 @@
+#---------------------------------
+# By lkaerys
+# VIPSBLOQUEIOS.SK
+#---------------------------------
+
+
+#-------- CHATCOLOR --------
+on command "chatcolor red":
+ if player doesn't have permission "tab.staff":
+  if player has permission "is.vip":
+   cancel event
+   send "&cCor exclusiva para a staff." to player
+
+on command "chatcolor darkred":
+ if player doesn't have permission "tab.staff":
+  if player has permission "is.vip":
+   cancel event
+   send "&cCor exclusiva para a staff." to player
+
+on command "chatcolor yellow":
+ if player doesn't have permission "tab.staff":
+  if player has permission "is.vip":
+   cancel event
+   send "&cCor exclusiva para o chat local." to player
+
+on command "chatcolor gray":
+ if player doesn't have permission "tab.staff":
+  if player has permission "is.vip":
+   cancel event
+   send "&cCor exclusiva para o chat global." to player
+
+#--------- COLORMSG -------- PermSK dependent
+on chat:
+ if player does not have permission "is.vip":
+  if message contains "&":
+   set {_msg} to message
+   loop numbers from 0 to 9:
+    replace all "&%loop-number%" with "" in {_msg}
+
+   loop "a","b","c","d","e","f","k","l","m","n","o","r":
+    replace all "&%loop-value%" with "" in {_msg}
+   
+   set message to {_msg}
+
+
+#-------- REPAIR --------
+#faz com que vips só possam usar /repair 1x por dia
+on command "repair":
+ if player doesn't have permission "tab.staff":
+  if player has permission "is.vip":
+   if {repair.cooldown.%player%} is set:
+    if {repair.cooldown.%player%} > now:
+     set {_tempo} to difference between {repair.cooldown.%player%} and now
+     send "&cVocê deve esperar %{_tempo}% para usar novamente." to player
+     cancel event
+     stop
+    else:
+     delete {repair.cooldown.%player%}
+
+   set {repair.cooldown.%player%} to now + 1 day
+
+#reseta cooldown do repair
+command /resetrepair <player>:
+ permission: op
+ permission message: &cVocê não tem permissão para usar isso.
+ trigger:
+  delete {repair.cooldown.%uuid of arg-1%}
+  send "&aCooldown do repair resetado!" to player
+  send "&aSeu cooldown do repair foi resetado por um administrador!" to arg-1
+
+#-------- FLY --------
+#Limita velocidade do fly para vips
+on command "fly":
+ if player doesn't have permission "tab.staff":
+  if player's fly speed is not 0.035:
+   set player's fly speed to 0.035
+
+#Bloqueia fly durante combate no CombatLog.sk
+ if {combat::%uuid of player%} is set:
+  send "&cVocê não pode usar fly durante o combate!" to player
+  cancel event
+ if {combatInfinite::%uuid of player%} is set:
+  send "&cVocê não pode usar fly durante o combate!" to player
+  cancel event
+
+#Se tiver com a mace equipada na mao, troca pra outro slot.
+ if player doesn't have permission "tab.staff":
+  if flight mode of player is false:  
+   if player's tool is mace:
+   
+    #troca pra outro slot
+    set {_macecount} to 0
+    clear {_slot}
+    loop numbers from 0 to 8:
+     if item in slot loop-number of player is mace:
+      add 1 to {_macecount}
+     else:
+      if {_slot} is not set:
+       set {_slot} to loop-number
+
+    if {_macecount} >= 9:
+     #se tudo for mace o comando nem ativa
+     send "&cVocê realmente achou que encher a hotbar com mace funcionaria?" to player
+     cancel event
+    else:
+     #se tiver um slot livre, troca a seleção pra lá
+     send "&cVocê não pode usar a Mace enquanto estiver voando!" to player
+     set selected hotbar slot of player to {_slot}
+
+#Se tiver com a mace equipada na offhand, troca por outro item ou manda de volta pro inv.
+ if player doesn't have permission "tab.staff":
+  if flight mode of player is false:
+   if player's offhand tool is mace:
+   
+    #troca pra outro item
+    set {_macecount} to 0
+    clear {_slot}
+    loop numbers from 0 to 8:
+     if item in slot loop-number of player is mace:
+      add 1 to {_macecount}
+     else:
+      if {_slot} is not set:
+       set {_slot} to loop-number
+       set {_item} to item in slot {_slot} of player
+      set {_off} to player's offhand tool
+    
+    if {_macecount} >= 8:
+     #se tudo for mace o comando nem ativa
+     send "&cVocê realmente achou que encher a hotbar com mace funcionaria?" to player
+     cancel event
+    else:
+     set slot {_slot} of player to {_off}
+     set player's offhand tool to {_item}
+     send "&cVocê não pode usar a Mace enquanto estiver voando!" to player
+     #se a seleção estiver no slot da mace, troca pra outro
+     if selected hotbar slot of player is {_slot}:
+      loop numbers from 0 to 8:
+       if item in slot loop-number of player is not mace:
+        set selected hotbar slot of player to loop-number
+        stop
+
+#Ao desativar o fly, teleporta o player para o chão (evita mace ao desativar o fly)
+ if player doesn't have permission "tab.staff":
+  if flight mode of player is true:
+   set {_b} to block below player
+
+   set {_i} to 0
+   while {_b} is not solid:
+    add 1 to {_i}
+    if {_i} > 500: 
+     stop
+
+    set {_b} to block below {_b}
+
+   teleport player to location above {_b}
+
+#Se pegar mace no chão enquanto está com fly ativo, não pega a mace. (se a mace for pro slot selecionado)
+on player pick up:
+ if player doesn't have permission "tab.staff":
+  if flight mode of player is true:
+   if event-item is mace:
+    send action bar "&cVocê não pode pegar Maces! /fly" to player
+    cancel event
+
+#Bloqueia Mace se o fly estiver ativo (mão principal)
+on tool change:
+ if player doesn't have permission "tab.staff":
+  if gamemode of player is survival:
+   if player's tool is mace:
+    if flight mode of player is true:
+     send action bar "&cVocê não pode usar Maces! /fly" to player
+     cancel event
+
+#Evita swap da mace para a hotbar
+on inventory click:
+ if player doesn't have permission "tab.staff":
+  if gamemode of player is survival:
+   if event-slot is mace:
+    if flight mode of player is true:
+     send action bar "&cVocê não pode mover Maces! /fly" to player
+     cancel event
+     

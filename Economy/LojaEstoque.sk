@@ -1,0 +1,109 @@
+command /reporloja <number>:
+ permission: op
+ permission message: &cVocê não tem permissão para usar isso.
+ trigger:
+  send "&a&l[Serpens] &fIniciando reposição de estoque..." to player
+ 
+  clear {_bau::*}
+  clear {_framesvistos::*}
+
+  set {_pos1} to location(19,124,-45,world)
+  set {_pos2} to location(-26,121,-72,world)
+  loop all entities within {_pos1} and {_pos2}:
+   
+   #Adquire baus.
+   if loop-entity is item frame:
+    if loop-entity is not in {_framesvistos::*}:
+     add loop-entity to {_framesvistos::*}
+     set {_item} to item of loop-entity 
+     clear {_key}
+     if {_item} is enchanted book:
+      set {_key} to "%nbt compound of {_item}%" # Para livros de encantamento
+     else:
+      set {_key} to "%type of {_item}%" # Demais itens
+     set {_chest} to block behind loop-entity
+
+     add 54 to {_bau::%{_key}%.slots}
+     add {_chest} to {_bau::%{_key}%.inv::*}
+
+     #Repõe os baús
+     if {_bau::%{_key}%.slots} >= 162:
+      set {_slotstofill} to floor({_bau::%{_key}%.slots} * arg-1 / 100)
+      set {_slotsfilled} to 0
+    
+      #limpa todos os 3 baús 
+      loop {_bau::%{_key}%.inv::*}:
+       set {_inv} to loop-value-2
+       set {_i} to 0
+       loop 54 times:
+        set slot {_i} of {_inv} to air
+        add 1 to {_i}
+      
+      #Reestoca os 3 baús
+      loop {_bau::%{_key}%.inv::*}:
+       set {_inv} to loop-value-2
+       #Exceções -----------------------------------------
+       #Trims - apenas 2 itens por estoque
+       if "%type of {_item}%" contains "Trim":
+        set {_slotstofill} to 2
+        set {_i} to 0
+        loop 54 times:
+         #checa se já foi tudo cheio
+         if {_slotsfilled} >= {_slotstofill}:
+          stop loop
+
+         set slot {_i} of {_inv} to {_item}
+         add 1 to {_i}
+         add 1 to {_slotsfilled}
+        continue loop
+       
+       #Netherite - apenas 10 itens por estoque
+       if "%type of {_item}%" contains "Netherite":
+        set {_slotstofill} to 1
+        set {_i} to 0
+        loop 54 times:
+         #checa se já foi tudo cheio
+         if {_slotsfilled} >= {_slotstofill}:
+          stop loop
+
+         set slot {_i} of {_inv} to 10 of {_item}
+         add 1 to {_i}
+         add 1 to {_slotsfilled}
+        continue loop
+
+       #Livros de encantamento - apenas 15 itens por estoque
+       if "%type of {_item}%" contains "Enchanted Book":
+        set {_slotstofill} to 15
+        set {_i} to 0
+        loop 54 times:
+         #checa se já foi tudo cheio
+         if {_slotsfilled} >= {_slotstofill}:
+          stop loop
+
+         set slot {_i} of {_inv} to {_item}
+         add 1 to {_i}
+         add 1 to {_slotsfilled}
+        continue loop
+       
+       #Itens que não são vendidos - 0 itens por estoque
+       if "%type of {_item}%" contains "Chorus Fruit":
+        continue loop
+       if "%type of {_item}%" contains "Shulker Shell":
+        continue loop
+       
+       #set {_added} to Restringe("Nether Wart", {_inv}, 0, {_item}, {_qtd})
+       #set {_added} to Restringe("Blaze Rod", {_inv}, 0, {_item}, {_qtd})
+       #set {_added} to Restringe("Magma Cream", {_inv}, 0, {_item}, {_qtd})
+       #-------------------------------------------------------
+
+       #Repõe inventários - estoque normal - demais itens
+       set {_i} to 0
+       loop 54 times:
+        #checa se já foi tudo cheio
+        if {_slotsfilled} >= {_slotstofill}:
+         stop loop
+
+        set slot {_i} of {_inv} to 64 of {_item}
+        add 1 to {_i}
+        add 1 to {_slotsfilled}
+  send "&a&l[Serpens] &eLoja Reestocada." to player

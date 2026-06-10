@@ -1,0 +1,10 @@
+#Skript-reflect dependent
+command /g <text>:
+ trigger:
+  set {_text} to "!%arg-1%"
+  player.chat({_text})
+
+command /tell <player> <text>:
+ trigger:
+  set {_text} to "/msg %arg-1% %arg-2%"
+  player.chat({_text}) 

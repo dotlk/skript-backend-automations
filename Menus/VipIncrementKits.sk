@@ -1,0 +1,49 @@
+#Esse skript tem função de liberar o resgate dos kits vips no /menu
+
+#O plugin SerpensVipActivator executa o comando de increment após o uso das keys. (add +1 para a variavel kitresgate do player)
+#então o menu consegue ler esse increment e gerar os kits para resgate.
+
+command /kitvip <text> <player>:
+ permission: op
+ trigger:
+  if arg-1 is "cobra":
+   add 1 to {Kit.VIPCOBRA.Resgate::%uuid of arg-2%}
+   send "&aKitvip cobra +1 para %arg-2%" to player
+
+  if arg-1 is "vibora":
+   add 1 to {Kit.VIPVIBORA.Resgate::%uuid of arg-2%}
+   send "&aKitvip vibora +1 para %arg-2%" to player
+
+  if arg-1 is "hydra":
+   add 1 to {Kit.VIPHYDRA.Resgate::%uuid of arg-2%}
+   send "&aKitvip hydra +1 para %arg-2%" to player
+
+  if arg-1 is "cobraclear":
+   delete {Kit.VIPCOBRA.Resgate::%uuid of arg-2%}
+   send "&cKitvip cobra LIMPO para %arg-2%" to player
+
+  if arg-1 is "viboraclear":
+   delete {Kit.VIPVIBORA.Resgate::%uuid of arg-2%}
+   send "&cKitvip vibora LIMPO para %arg-2%" to player
+
+  if arg-1 is "hydraclear":
+   delete {Kit.VIPHYDRA.Resgate::%uuid of arg-2%}
+   send "&cKitvip hydra LIMPO para %arg-2%" to player
+
+  if arg-1 is "check":
+   send "&fkits disponiveis para &f%arg-2%:" to player
+   if {Kit.VIPCOBRA.Resgate::%uuid of arg-2%} is set:
+    send "&2Kitvip cobra&f: &a%{Kit.VIPCOBRA.Resgate::%uuid of arg-2%}%" to player
+   else:
+    send "&2Kitvip cobra&f: &a0" to player
+   if {Kit.VIPVIBORA.Resgate::%uuid of arg-2%} is set:
+    send "&6Kitvip vibora&f: &a%{Kit.VIPVIBORA.Resgate::%uuid of arg-2%}%" to player
+   else:
+    send "&6Kitvip vibora&f: &a0" to player
+   if {Kit.VIPHYDRA.Resgate::%uuid of arg-2%} is set:
+    send "&dKitvip hydra&f: &a%{Kit.VIPHYDRA.Resgate::%uuid of arg-2%}%" to player
+   else:
+    send "&dKitvip hydra&f: &a0" to player
+
+on tab complete of "/kitvip":
+ set tab completions for position 1 to "cobra" and "vibora" and "hydra" and "cobraclear" and "viboraclear" and "hydraclear" and "check"

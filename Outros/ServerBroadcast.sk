@@ -1,0 +1,40 @@
+# =========================================
+# Broadcast Automático
+# =========================================
+# by lKaerys
+# dependencies: Luckperms, Permsk
+# =========================================
+
+every 2 minutes:
+  set {_msg::2} to "&a✦ Dica!>: Use &f&7/g &apara utilizar o chat global!"
+  set {_msg::3} to "&9✦ Dica!>: &f/tell <jogador> &9para mandar uma mensagem privada!"
+  set {_msg::4} to "&d&l⭐ VOCÊ É VIP!!&r&6>: &bNão se esqueça de resgatar seus kits todo dia!" 
+  set {_msg::5} to "&c🍔 Dica!>: &e/kit comida &cpode saciar sua fome!" 
+  set {_msg::6} to "&f⚔ Dica!>: Resgate seu &e/kit iniciante&f! Sua história começa pelo seu armamento!"
+  set {_msg::8} to "&e🎁 Dica!>: Compre e venda itens na loja! &f/warp Loja" 
+  set {_msg::9} to "&bDica!>: &9Retorne ao spawn usando &f/warp Spawn&9!" 
+  set {_msg::10} to "&9Dica!>: Perdido nos comandos? use &f/comandos &9para receber o guia!"
+
+  loop all players:
+    #Tenta 10 vezes até achar uma mensagem válida pra enviar
+    loop 10 times:
+      set {_r} to random integer between 1 and 10
+      if {_r} is 4:
+        if loop-player doesn't have permission "is.vip":
+          continue loop
+      if {_r} is 6:
+        if {kit.iniciante.pego::%uuid of loop-player%} is set:
+          continue loop
+
+      if {_r} is 1:
+        send "&d📢 Comunidade no discord >: <link:https://discord.gg/ruy7qUjxRF>&b&nClique aqui!<reset>" to loop-player
+      else if {_r} is 7:
+        if loop-player doesn't have permission "is.vip":
+          send "&b🛒 Adquira já seu VIP na loja! >: <link:https://www.serpenscorp.com.br/>&d&nClique aqui!<reset>" to loop-player
+        else:
+          continue loop
+      else:
+        send {_msg::%{_r}%} to loop-player
+      play sound "entity.arrow.hit_player" for loop-player
+      stop loop
+      

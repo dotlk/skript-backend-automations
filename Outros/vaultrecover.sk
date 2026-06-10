@@ -1,0 +1,84 @@
+command /vaultfix <text>:
+ permission: op
+ trigger:
+  if arg-1 is "start":
+   if {vaultfix::running} is not set:
+    set {vaultfix::running} to true
+
+    #presets
+    set {_center} to location(0, 0, 0, "world")
+    set {_borderradius} to 14999
+    set {vaultfix::minLoc} to location(-1 * {_borderradius}, 0, -1 * {_borderradius}, world "world")
+    set {vaultfix::maxLoc} to location({_borderradius}, 0, {_borderradius}, world "world")
+
+    set {vaultfix::minX} to floor((x-coordinate of {vaultfix::minLoc}) / 16)
+    set {vaultfix::minZ} to floor((z-coordinate of {vaultfix::minLoc}) / 16)
+    set {vaultfix::maxX} to floor((x-coordinate of {vaultfix::maxLoc}) / 16)
+    set {vaultfix::maxZ} to floor((z-coordinate of {vaultfix::maxLoc}) / 16)
+
+    set {vaultfix::chunkstotal} to 1875*1875
+    set {vaultfix::chunkscorrigidas} to 0
+
+    #-----
+    send "&9VaultFix iniciado" to player
+   else if {vaultfix::running} is false:
+    set {vaultfix::running} to true
+    send "&bVaultFix retomado" to player
+   else:
+    send "&cVaultfix já está rodando." to player
+
+  else if arg-1 is "stop":
+   if {vaultfix::running} is true:
+    set {vaultfix::running} to false
+    send "&6VaultFix parado" to player
+   else:
+    send "&cVaultfix já está parado" to player
+  else if arg-1 is "clear":
+   delete {vaultfix::*}
+   send "&eTodo o progresso de Vault fix foi limpo" to player
+   send "&9/vaultfix start &epara iniciar um novo progresso" to player
+
+on tab complete of "/vaultfix":
+  set tab completions for position 1 to "start" and "stop" and "clear"
+  
+every 5 seconds:
+ if {vaultfix::running} is true:
+  #se chegou na ultima chunk, para e avisa no console.
+  if {vaultfix::chunkscorrigidas} > {vaultfix::chunkstotal}:
+   send "&c&lVault fix terminou o serviço. Pare-o." to console
+   stop
+
+  loop 15 times: #conserta vaults em 10 CHUNKS a cada 5 segundos
+   set {_cx} to {vaultfix::minX}
+   set {_cz} to {vaultfix::minZ}
+
+   # Execução de reparação dos vaults
+   loop blocks in chunk at {_cx}, {_cz} in world "world":
+    if y-coordinate of loop-block < 80:
+     if loop-block is vault:
+      set {_nbt} to "%nbt of loop-block%"
+      set {_pos} to position of loop-block
+      set {_x} to floor(x-coordinate of {_pos})
+      set {_y} to floor(y-coordinate of {_pos})
+      set {_z} to floor(z-coordinate of {_pos})
+      set {_dir} to facing of loop-block
+
+      if {_nbt} contains "ominous_trial_key":
+       execute console command "setblock %{_x}% %{_y}% %{_z}% minecraft:vault[ominous=true]{config:{key_item:{id:""minecraft:ominous_trial_key"",count:1},loot_table:""minecraft:chests/trial_chambers/reward_ominous""}} destroy"
+       set facing of block at {_pos} to {_dir}
+      else:
+       execute console command "setblock %{_x}% %{_y}% %{_z}% minecraft:vault[ominous=false]{config:{key_item:{id:""minecraft:trial_key"",count:1},loot_table:""minecraft:chests/trial_chambers/reward""}} destroy"
+       set facing of block at {_pos} to {_dir}
+      
+   # incrementa X e marca chunk
+   add 1 to {vaultfix::minX}
+   add 1 to {vaultfix::chunkscorrigidas}
+
+   # passou limite X → reseta e sobe Z
+   if {vaultfix::minX} > {vaultfix::maxX}:
+    set {vaultfix::minX} to floor((x-coordinate of {vaultfix::minLoc}) / 16)
+    add 1 to {vaultfix::minZ}
+
+  # avisa progresso no console
+  send "&b&l[VAULTFIX] &r&8Corrigidas &e%{vaultfix::chunkscorrigidas}% &8de &a%{vaultfix::chunkstotal}%" to console
+

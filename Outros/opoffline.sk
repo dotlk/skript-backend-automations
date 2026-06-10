@@ -1,0 +1,15 @@
+on command "vanish":
+ if player has permission "tab.staff":
+  set {_lpsuffix} to value of placeholder "luckperms_suffix" for player
+  replace all "&" with "§" in {_lpsuffix}
+  set {_isvanished} to (value of placeholder "essentials_vanished" for player) parsed as boolean
+
+  #fake disconnect
+  wait 1 tick
+  if {_isvanished} is false:
+   loop all players: 
+    send "&8[&c-&8] %{_lpsuffix}%%player%" to loop-player
+  else:
+   loop all players:
+    send "&8[&a+&8] %{_lpsuffix}%%player%" to loop-player
+   

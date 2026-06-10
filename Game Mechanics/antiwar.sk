@@ -1,0 +1,16 @@
+# Dependências: PlaceholderAPI, skript-placeholders
+
+on command "clan":
+ if arg-1 is "war":
+  if arg-2 is "start":
+   set {_clanalvo} to arg-3
+   set {_online} to 0
+
+   loop all players:
+    set {_clanplayer} to value of placeholder "simpleclans_tag" for loop-player
+    if {_clanplayer} is {_clanalvo}:
+     add 1 to {_online}
+
+   if {_online} <= 0:
+    cancel event
+    send "&cVocê não pode iniciar uma guerra contra um clan offline."

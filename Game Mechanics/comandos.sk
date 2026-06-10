@@ -1,0 +1,22 @@
+command /comandos:
+    trigger:
+        #Cria livro
+        set {_book} to a written book
+        set book author of {_book} to "&9lKaerys"
+        set book title of {_book} to "&d&lGuia de comandos"
+
+        #Cria páginas
+        set {_page::1} to text component from "&m&l                      %nl%&r   GUIA DE COMANDOS%nl%      &d&l🅂🄴🅁🄿🄴🄽🅂%nl%&r&m&l                      %nl%&r[&9&l1&r] &9&lSERVIDOR%nl%&r&l◦/menu%nl%&r&8➥ /vip /tags /site%nl%&r&l◦/dc%nl%&r&8➥ Link do discord%nl%&r&l◦/ativar%nl%&r&8➥ Ativar Vip - /site para acessar a loja%nl%&r&l◦/skin%nl%&r&8➥ mudar skin"
+        set {_page::2} to text component from "&l◦/sb%nl%&r&8➥ desativa o scoreboard lateral%nl%&r&l◦/kit%nl%&r&8➥ Resgate de kits%nl%&r&l◦/leaderboard%nl%&r&8➥ Ranking Players e Clans%nl%&r&l◦/moneytop%nl%&r&8➥ Ranking Magnata%nl%&r&l◦/x1%nl%&r&8➥ Desafie alguém para um duelo!"
+        set {_page::3} to text component from "[&c&l2&r] &c&lTRANSPORTE%nl%&r&l◦/warp Spawn%nl%&r&8➥ Teleporta-se para o spawn%nl%&r&l◦/warp Loja%nl%&r&8➥ Teleporta-se para a loja%nl%&r&l◦/sethome%nl%&r&l◦/delhome%nl%&r&l◦/home%nl%&r&8➥ Teleporta-se para sua casa%nl%&r&l◦/tpa%nl%&r&8➥ Solicitar teleporte"
+        set {_page::4} to text component from "[&2&l3&r] &2&lCHAT%nl%&r&l◦/g ou !texto%nl%&r&8➥ Envia uma mensagem no canal Global%nl%&r&l◦/tell ou /msg%nl%&r&8➥ mensagem privada%nl%&r&8➥ /r para responder%nl%&r&l◦/anuncio%nl%&r&8➥ Anuncie uma mensagem%nl%&r&l◦/channel%nl%&r&8➥ Demais comandos"
+        set {_page::5} to text component from "[&1&l4&r] &1&lEMOTES%nl%&r&l◦/sit%nl%&r&8➥ Sentar-se%nl%&r&8➥ Você também pode clicar em escadas ou meio blocos%nl%&r&l◦/lay%nl%&r&8➥ Deitar-se%nl%&r&l◦/crawl%nl%&r&8➥ Rastejar-se%nl%&r[&3&l5&r] &3&lCLANS%nl%&r&l◦/clan%nl%&r&8➥ Comandos de clan"
+        set {_page::6} to text component from "&l◦/.%nl%&r&8➥ Envia uma mensagem no chat do clan%nl%&r&l◦/ally%nl%&r&8➥ Envia uma mensagem no chat de aliados%nl%&r[&6&l6&r] &6&lMINIGAMES%nl%&r&l◦/parkour%nl%&r&l◦/gladiador%nl%&r&l◦/spleef%nl%&r&l◦/frog"
+        set {_page::7} to text component from "&l◦/duelo%nl%&r[&d&l6&r] &d&lVIPS%nl%&r&l◦/chatcolor%nl%&r&8➥ mudar cor do chat%nl%&r&l◦/echest ou /ec%nl%&r&8➥ Abrir enderchest%nl%&r&l◦/craft%nl%&r&8➥ abrir crafting table%nl%&r&l◦/fertilizar%nl%&r&8➥ cresce mobs e plantações ao redor%nl%&r&l◦/furnace%nl%&r&8➥ Abrir fornalha"
+        set {_page::8} to text component from "&l◦/sacar%nl%&r&8➥ Saca dinheiro do banco%nl%&r&l◦/depositar%nl%&r&8➥ deposita dinheiro no banco%nl%&r&l◦/fly%nl%&r&8➥ Ativa o modo de voo%nl%&r&l◦/repair%nl%&r&8➥ repara equipamentos%nl%&r&l◦/anvil%nl%&r&8➥ abre bigorna"
+
+        # escreve no livro
+        loop {_page::*}:
+            set page loop-index parsed as number of {_book} to loop-value
+        
+        give {_book} to player

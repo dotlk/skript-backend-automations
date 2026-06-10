@@ -1,0 +1,230 @@
+#SACAR MOEDAS
+#by lkaerys
+
+options:
+ materialmoeda: paper
+ valorSerp: 100
+ nomemoedaSerp: &6&lSerp
+ modelSerp: "minecraft:serp_coin"
+
+ valorSerkron: 1000
+ nomemoedaSerkron: &b&lSerkron
+ modelSerkron: "minecraft:serkron_coin"
+
+#cria a moeda
+on load:
+ set {MoedaModeloSerp} to {@materialmoeda} named "{@nomemoedaSerp}" with lore "&7Valor: &a$&6{@valorSerp}"
+ set item model of {MoedaModeloSerp} to {@modelSerp}
+ set max stack size of {MoedaModeloSerp} to 99
+
+ set {MoedaModeloSerkron} to {@materialmoeda} named "{@nomemoedaSerkron}" with lore "&7Valor: &a$&6{@valorSerkron}"
+ set item model of {MoedaModeloSerkron} to {@modelSerkron}
+ set max stack size of {MoedaModeloSerkron} to 99
+
+#Impede que o paper com item model seja usado em crafting
+on craft:
+ loop items in event-inventory:
+  if IsSerp(loop-item) or IsSerkron(loop-item):
+   cancel event
+
+#Funções:
+#Verifica se a moeda é válida
+function IsSerp(i: item) :: boolean: 
+ if {_i} is {@materialmoeda}:
+  if item model of {_i} is {@modelSerp}:
+   return true
+    
+ return false
+function IsSerkron(i: item) :: boolean: 
+ if {_i} is {@materialmoeda}:
+  if item model of {_i} is {@modelSerkron}:
+   return true
+    
+ return false
+############# MECÂNICA
+
+#SAQUE
+function sacar(qtd: integer, moedaescolha: text, p: player):
+ if {_moedaescolha} is "Serp":
+  set {_preço} to ({_qtd} * {@valorSerp})
+  set {_carteiraplayer} to value of placeholder "vault_eco_balance" for {_p} parsed as number
+  
+  if {_carteiraplayer} < {_preço}:
+   send action bar "&cPara sacar &e%{_qtd}% Serps &cé preciso de &a$&6%{_preço}%" to {_p}
+   stop
+  
+  set {_moeda} to {MoedaModeloSerp}
+  set amount of {_moeda} to {_qtd}
+  # Verifica espaço no inventário
+  if {_p} cannot hold {_moeda}:
+   send action bar "&cVocê não possui espaço para sacar!" to {_p}
+   play sound "entity.cat.ambient" to {_p}
+   stop
+
+  #Dá as moedas e converte da carteira
+  remove {_preço} from balance of {_p}
+  give glowing {_moeda} to {_p}
+  send action bar "&aVocê sacou &e%{_qtd}% Serps &apor &a$&6%{_preço}%" to {_p}
+  play sound "block.amethyst_block.resonate" to {_p}
+
+ if {_moedaescolha} is "Serkron":
+  set {_preço} to ({_qtd} * {@valorSerkron})
+  set {_carteiraplayer} to value of placeholder "vault_eco_balance" for {_p} parsed as number
+  
+  if {_carteiraplayer} < {_preço}:
+   send action bar "&cPara sacar &e%{_qtd}% Serkrons &cé preciso de &a$&6%{_preço}%" to {_p}
+   stop
+  
+  set {_moeda} to {MoedaModeloSerkron}
+  set amount of {_moeda} to {_qtd}
+  # Verifica espaço no inventário
+  if {_p} cannot hold {_moeda}:
+   send action bar "&cVocê não possui espaço para sacar!" to {_p}
+   play sound "entity.cat.ambient" to {_p}
+   stop
+
+  #Dá as moedas e converte da carteira
+  remove {_preço} from balance of {_p}
+  give glowing {_moeda} to {_p}
+  send action bar "&aVocê sacou &e%{_qtd}% Serkron &apor &a$&6%{_preço}%" to {_p}
+  play sound "block.amethyst_block.resonate" to {_p}
+
+ if {_moedaescolha} is not set:
+  send "&c/sacar <qtd> <moeda>" to {_p}
+
+#DEPÓSITO
+function depositar(p: player):
+ set {_total} to 0
+ set {_serp} to 0
+ set {_serkron} to 0
+
+ #checa se há moedas
+ loop items in inventory of {_p}:
+  if IsSerp(loop-item):
+   add amount of loop-item to {_total}
+   add amount of loop-item to {_serp}
+  if IsSerkron(loop-item):
+   add amount of loop-item to {_total}
+   add amount of loop-item to {_serkron}
+
+ if {_total} <= 0:
+  send action bar "&cVocê não tem moedas para depositar." to {_p}
+  play sound "block.note_block.hat" to {_p}
+  stop
+
+ add {_serp} * {@valorSerp} to {_valordeposito}
+ add {_serkron} * {@valorSerkron} to {_valordeposito}
+
+ #Remove as moedas e converte para a carteira
+ loop items in inventory of {_p}:
+  if IsSerp(loop-item):
+   remove loop-item from {_p}
+  if IsSerkron(loop-item):
+   remove loop-item from {_p}
+
+ add {_valordeposito} to balance of {_p}
+
+ send action bar "&aVocê depositou &e%{_total}% moedas &ae recebeu &a$&6%{_valordeposito}%" to {_p}
+ play sound "block.chain.place" to {_p}
+
+
+
+
+#Comandos vip exclusivos
+command /Sacar <integer> [<text>]:
+ permission: vip.money.sacar
+ permission message: &cVocê não tem permissão para usar isso.
+ trigger:
+  sacar(arg-1, arg-2, player)
+
+on tab complete of "/Sacar":
+ set tab completions for position 2 to "Serp" and "Serkron"
+
+command /Depositar:
+ permission: vip.money.depositar
+ permission message: &cVocê não tem permissão para usar isso.
+ trigger:
+  depositar(player)
+
+
+on join:
+ set {_iconeSerp} to {MoedaModeloSerp}
+ clear lore of {_iconeSerp}
+ set {_iconeSerkron} to {MoedaModeloSerkron}
+ clear lore of {_iconeSerkron}
+
+ # Cria menu banco
+ set metadata tag "banco" of player to chest inventory with 3 rows named "&2&lSERPENS &6&lBANK"
+ set slot 12 of metadata tag "banco" of player to glowing {_iconeSerkron} named "&2&lSacar" 
+ set slot 14 of metadata tag "banco" of player to minecraft:gray_bundle named "&2&lDepositar" 
+ 
+ # Cria sub menus
+ set metadata tag "banco_saque" of player to chest inventory with 3 rows named "&2&lSAQUE"
+ set slot 22 of metadata tag "banco_saque" of player to minecraft:redstone_torch named "&4&lVOLTAR"
+ set slot 10 of metadata tag "banco_saque" of player to glowing {_iconeSerp} named "&fSacar 1 &6&lSerp" 
+ set slot 11 of metadata tag "banco_saque" of player to glowing {_iconeSerp} named "&fSacar 10 &6&lSerps" 
+ set slot 12 of metadata tag "banco_saque" of player to glowing {_iconeSerp} named "&fSacar 99 &6&lSerps" 
+ set slot 14 of metadata tag "banco_saque" of player to glowing {_iconeSerkron} named "&fSacar 1 &b&lSerkron" 
+ set slot 15 of metadata tag "banco_saque" of player to glowing {_iconeSerkron} named "&fSacar 10 &b&lSerkron" 
+ set slot 16 of metadata tag "banco_saque" of player to glowing {_iconeSerkron} named "&fSacar 99 &b&lSerkron" 
+
+#Cliques Menu------------------------------------
+on inventory click:
+ set {_Menus::1} to "banco" 
+ set {_Menus::2} to "banco_saque"
+
+ #Não deixa player pegar ou colocar items ---BLOQUEIO DE CLIQUE---
+ loop {_Menus::*}:
+  if player's current inventory is (metadata tag "%{_Menus::%loop-index%}%" of player):
+   cancel event
+
+ # BANCO ###############################
+ if event-inventory = (metadata tag "%{_Menus::1}%" of player):
+  #Lógica dos botões
+  
+  # SACAR #####################################
+  if index of event-slot is 12:
+   wait 2 tick
+   open (metadata tag "banco_saque" of player) to player
+   play sound "block.amethyst_cluster.break" to player
+
+  # DEPOSITAR #####################################
+  if index of event-slot is 14:
+   depositar(player)
+
+ # SAQUE ###############################
+ if event-inventory = (metadata tag "%{_Menus::2}%" of player):
+  #Lógica dos botões
+
+  #voltar
+  if index of event-slot is 22:
+   wait 2 tick
+   open (metadata tag "banco" of player) to player
+   play sound "block.heavy_core.step" to player
+
+  # 1 serp
+  if index of event-slot is 10:
+   sacar(1, "serp", player)
+  # 10 serp
+  if index of event-slot is 11:
+   sacar(10, "serp", player)
+  # 99 serp
+  if index of event-slot is 12:
+   sacar(99, "serp", player)  
+
+  # 1 serkron
+  if index of event-slot is 14:
+   sacar(1, "serkron", player)
+  # 10 serkron
+  if index of event-slot is 15:
+   sacar(10, "serkron", player)
+  # 99 serkron
+  if index of event-slot is 16:
+   sacar(99, "serkron", player) 
+  
+command /banco <player>:
+ description: Uso exclusivo do NPC Banco
+ permission: op
+ trigger:
+  open (metadata tag "banco" of arg-1) to arg-1
+  play sound "block.copper_door.close" to arg-1

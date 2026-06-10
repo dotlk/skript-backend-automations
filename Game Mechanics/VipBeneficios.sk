@@ -1,0 +1,68 @@
+# FURNACE
+command /furnace:
+ permission: vip.furnace
+ permission message: &cVocê não tem permissão para usar isso.
+ trigger:
+  # Se já tem fornalha, abre.
+  if block at {vipfurnace::%player%} is furnace:
+   open inventory of block at {vipfurnace::%player%} to player
+   stop
+        
+  # Se não tem, cria a fornalha pro vip
+  loop 10 times:
+   set {_y} to 59 + loop-value-1
+   loop 14 times:
+    set {_z} to -61 - loop-value-2
+    loop 14 times:
+     set {_x} to 24 + loop-value-3
+     
+     set {vipfurnace::%player%} to location({_x}, {_y}, {_z}, "staff")
+
+     if block at {vipfurnace::%player%} is air:
+      set block at {vipfurnace::%player%} to furnace named "&l%player%"
+      open inventory of block at {vipfurnace::%player%} to player
+      stop
+
+on skript start: #Deleta todas as fornalhas ao reiniciar se estiverem vazias
+ loop {vipfurnace::*}:
+  set {_loc} to loop-value
+  if block at {_loc} is furnace:
+   set {_inv} to inventory of block at {_loc}
+   if slot 0 of {_inv} is air:
+    if slot 1 of {_inv} is air:
+     if slot 2 of {_inv} is air:
+      set block at {_loc} to air
+      delete {vipfurnace::%loop-index%}
+
+# FERTILIZAR
+command /fertilizar:
+ permission: vip.fertilizar
+ permission message: &cVocê não tem permissão para usar isso.
+ trigger:
+  if {fertilizar.cooldown.%player%} is set:
+   if {fertilizar.cooldown.%player%} > now:
+    set {_tempo} to difference between {fertilizar.cooldown.%player%} and now
+    send "&cVocê deve esperar %{_tempo}% para usar novamente." to player
+    stop
+   else:
+    delete {fertilizar.cooldown.%player%}
+
+  set {fertilizar.cooldown.%player%} to now + 1 hour
+
+  loop blocks in radius 7 around player:
+   if age of loop-block < 10:
+    set age of loop-block to 10
+  
+  loop mobs in radius 3 around player:
+   if loop-mob is a living entity:
+    set age of loop-mob to 10
+  play sound "entity.experience_orb.pickup" at location of player
+  send "&aAs plantações em um raio de &e7 &ablocos e mobs em um raio de &e3 &ablocos cresceram instantaneamente!" to player
+
+command /resetfertilizar <player>:
+ permission: op
+ permission message: &cVocê não tem permissão para usar isso.
+ trigger:
+  delete {fertilizar.cooldown.%uuid of arg-1%}
+  send "&aCooldown do fertilizar resetado!" to player
+  send "&aSeu cooldown do fertilizar foi resetado por um administrador!" to arg-1

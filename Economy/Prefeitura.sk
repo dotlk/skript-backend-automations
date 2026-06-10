@@ -1,0 +1,148 @@
+# ==========================================
+# SISTEMA DE IMPOSTO SERPENS
+# ==========================================
+
+options:
+    Prefix: &6&l[&r&6Prefeitura Serpens&6&l]
+    PrecoPorBloco: 10 # Valor de venda de cada bloco protegido
+    DiasDeAluguel: 30 days # Tempo até a próxima cobrança
+    TaxaImposto: 0.6 # Taxa de imposto (10% = 0.1)
+
+command /terreno [<text>]:
+ trigger:
+  set {_claims} to value of placeholder "griefprevention_claims" for player parsed as number
+  set {_blocosprotegidos} to value of placeholder "griefprevention_claimedblocks_total" for player parsed as number
+  set {_valor} to {_blocosprotegidos} * {@PrecoPorBloco}
+  set {_valorcomimposto} to {_valor} * {@TaxaImposto}
+
+  #define o prazo para 30 dias a partir do momento atual se ainda não estiver setada.
+  if {_claims} >= 1:
+   if {prazoimposto::%uuid of player%} is not set:
+    clear {imposto.pago::%uuid of player%}
+    clear {prazoanterior::%uuid of player%}
+    set {prazoimposto::%uuid of player%} to now + {@DiasDeAluguel}
+
+  if arg-1 is not set:
+   if {_claims} >= 1:
+    send "                          {@Prefix}" to player
+    send "                          &aVocê é dono de terra." to player
+    send "&7A prefeitura de &3&lSerpens &r&7garante proteção e segurança para os seus territórios por meio de verbas públicas arrecadadas." to player
+    send "&7&m                                                                                 " to player
+    send "- Você possui &b%{_blocosprotegidos}% &fblocos protegidos." to player
+    send "- Sua terra está avaliada em &a%{_valor}% &7moedas." to player
+    send "- O imposto sob taxa de &90.6 &ré de &c&l%{_valorcomimposto}% &r&7moedas!" to player
+
+    if {imposto.pago::%uuid of player%} is set:
+     send "" to player
+     send "&aSeu imposto está em dia!" to player
+     send "&fO próximo pagamento será a partir de &c%{prazoanterior::%uuid of player%}%&7." to player
+    else:
+     send "" to player
+     send "&cO imposto deste mês vence em &6%{prazoimposto::%uuid of player%}%&7." to player
+     send "&cSe o imposto não for pago até o prazo, sua terra será desprotegida sem ressarcimento!" to player
+     send "&cUse &e/terreno pagar&c!" to player
+     
+
+   else:
+    send "&cVocê não é dono de nenhuma terra!" to player
+    send "&cPara possuir uma terra, é preciso ser lider de um clã e proteger um terreno utilizando /claim ou uma pá dourada!" to player
+
+
+  if arg-1 is "pagar":
+   set {_quantia} to value of placeholder "vault_eco_balance" for player parsed as number
+
+   if {_claims} < 1:
+    send "&cVocê não é dono de nenhuma terra!" to player
+    stop
+   else if {imposto.pago::%uuid of player%} is set:
+    send "&cVocê já pagou o imposto deste mês!" to player
+    stop
+   else if {_quantia} < {_valorcomimposto}:
+    send "&cVocê não tem dinheiro o suficiente para pagar o imposto!" to player
+    stop 
+   
+   remove {_valorcomimposto} from balance of player
+   send "&aImposto pago com sucesso!" to player
+   set {imposto.pago::%uuid of player%} to true
+   set {prazoanterior::%uuid of player%} to {prazoimposto::%uuid of player%}
+   set {prazoimposto::%uuid of player%} to now + {@DiasDeAluguel}
+
+on tab complete of "/terreno":
+ set tab completions for position 1 to "pagar"
+
+
+
+
+# Verifica a cada 23 minutos se é mês de pagamento, desprotege terras com imposto vencido e avisa sobre pagamento pendente.
+every 23 minutes:
+
+ # checa se é mês de pagamento
+ loop {prazoanterior::*}:
+  if loop-value < now: 
+   if {imposto.pago::%{loop-index}%} is set: 
+    delete {imposto.pago::%{loop-index}%} # Reseta o status de pagamento para o próximo ciclo
+
+  
+ # Se o prazo de pagamento vencer a terra será desprotegida.
+ loop {prazoimposto::*}:
+  set {_player} to loop-index parsed as offline player
+  set {_name} to name of {_player}
+
+  if loop-value < now: 
+   if {imposto.pago::%uuid of {_player}%} is not set: 
+    send "{@Prefix} Terra de %{_player}% foi desprotegida por falta de pagamento de imposto!" to console
+    execute console command "deleteallclaims %{_player}%"
+    
+    delete {prazoanterior::%uuid of {_player}%}
+    delete {prazoimposto::%uuid of {_player}%}
+    delete {imposto.pago::%uuid of {_player}%}
+
+    # Envia mensagem de desproteção para o player
+    if {_player} is online:
+     send "{@Prefix} &cO prazo para pagamento do imposto venceu e sua terra foi desprotegida!" to {_player}
+     send "&cProteja novamente sua terra usando /claim ou uma pá dourada!" to {_player}
+    else:
+     set {vencimento.aviso.imposto::%uuid of {_player}%} to true # Flag para avisar o player quando ele logar, caso esteja offline no momento do vencimento
+   stop  
+
+
+ # Avisa ao player se há imposto pendente.
+ clear {_playersqtd}
+ loop all players:
+  set {_claims} to value of placeholder "griefprevention_claims" for loop-player parsed as number
+  if {_claims} >= 1:
+   if {imposto.pago::%uuid of loop-player%} is not set: # Se o imposto ainda não foi pago
+
+    #define o prazo para 30 dias a partir do momento atual se ainda não estiver setada.
+    if {_claims} >= 1:
+     if {prazoimposto::%uuid of loop-player%} is not set:
+      clear {imposto.pago::%uuid of loop-player%}
+      clear {prazoanterior::%uuid of loop-player%}
+      set {prazoimposto::%uuid of loop-player%} to now + {@DiasDeAluguel}
+
+    add 1 to {_playersqtd}
+    send "{@Prefix} &cVocê ainda não pagou os impostos de sua terra!" to loop-player
+    send "&cO prazo de pagamento é até &6%{prazoimposto::%uuid of loop-player%}%&c." to loop-player
+    send "&cUse &e/terreno &cpara saber mais." to loop-player
+
+ if {_playersqtd} > 0:
+  send "{@Prefix} Foram cobrados os impostos de &b%{_playersqtd}% &rjogadores." to console
+
+ 
+
+# Ao logar, o player recebe aviso de desproteção caso o imposto tenha vencido enquanto ele estava offline.
+on join:
+ if {vencimento.aviso.imposto::%uuid of player%} is set:
+  send "{@Prefix} &cO prazo para pagamento do imposto venceu e sua terra foi desprotegida!" to player
+  send "&cProteja novamente sua terra usando /claim ou uma pá dourada!" to player
+  delete {vencimento.aviso.imposto::%uuid of player%}
+
+# Verifica se o player está com variável setada mesmo não tendo terreno.
+every 5 seconds:
+ loop all players:
+  set {_claims} to value of placeholder "griefprevention_claims" for loop-player parsed as number
+  if {_claims} = 0:
+   if {prazoimposto::%uuid of loop-player%} is set:
+    delete {prazoimposto::%uuid of loop-player%}
+    delete {prazoanterior::%uuid of loop-player%}
+    delete {imposto.pago::%uuid of loop-player%}

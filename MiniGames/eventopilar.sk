@@ -1,0 +1,1095 @@
+##################
+#-EVENTO PILAR
+#-by lkaerys
+##################
+
+##################
+options:
+ EventoPilarPrefix: "&5&l[Pilar Aleatório]&r"
+ MinimoPlayers: 2
+ Manutenção: false
+ 
+#Limpar Arena
+function PilarLimparArena():
+ # LIMPAR BLOCOS DE PLAYERS 
+ loop {eventopilar::players::blocks::*}:
+  set block at loop-value to air
+
+ wait 5 ticks
+ delete {eventopilar::players::blocks::*}
+
+ # LIMPAR MOBS E ITENS
+ loop all entities in world "world":
+  if PilarDentroArena(location of loop-value):
+   if loop-value is not a player:
+    delete loop-value
+
+ # LIMPAR ÁGUA E LAVA - worldedit dependent
+ execute console command "//world world"
+ execute console command "//pos1 132,70,157"
+ execute console command "//pos2 80,526,111"
+ execute console command "//replace water air"
+ execute console command "//replace lava air"
+ execute console command "//desel"
+ send "%{@EventoPilarPrefix}% &9Water &7e &cLava &7limpos" to console
+ 
+#Protege Arena
+function PilarDentroArena(loc: location) :: boolean:
+ # mundo diferente
+ if world of {_loc} is not world "world":
+  return false
+
+ set {_eventopilar::Arena::Center} to location(106.5, 0, 135.5, world "world")
+ set {_eventopilar::Arena::Radius} to 22.5
+ # ignora Y
+ set y-coordinate of {_loc} to 0
+
+ if distance between {_loc} and {_eventopilar::Arena::Center} < {_eventopilar::Arena::Radius}:
+  return true
+ return false
+
+on player move:
+ if player has permission "tab.staff":
+  stop
+
+ set {_new} to event-location
+ clear {_safe}
+
+ #player de fora entrar na arena
+ if PilarDentroArena({_new}) is true:
+  set {_uuid} to uuid of player
+  if {eventopilar::players::%{_uuid}%::ingame} is false:
+   send actionbar "&cvocê não pode invadir a arena!" to player
+   kill vehicle of player
+   cancel event
+
+   #Verificar ultrapassagem
+   wait 1 second
+   if PilarDentroArena(location of player) is true:
+    set {_safe} to location(128, 80, 124, world "world")
+    teleport player to {_safe}
+    
+  else if {eventopilar::players::%{_uuid}%::ingame} is not set:
+   send actionbar "&cvocê não pode invadir a arena!" to player
+   kill vehicle of player
+   cancel event
+   
+   #Verificar ultrapassagem
+   wait 1 second
+   if PilarDentroArena(location of player) is true:
+    set {_safe} to location(128, 80, 124, world "world")
+    teleport player to {_safe}
+
+ #player de dentro sair da arena
+ if PilarDentroArena({_new}) is false:
+  set {_uuid} to uuid of player
+  if {eventopilar::players::%{_uuid}%::ingame} is true:
+   send actionbar "&cvocê não pode sair da arena!" to player
+   kill vehicle of player
+   cancel event
+   
+  #Verificar ultrapassagem
+   wait 1 second
+   if PilarDentroArena(location of player) is false:
+    set {_safe} to location(106.5, 71, 135.5, world "world")
+    teleport player to {_safe}
+
+function PilarNerfProjectile(p: projectile):: boolean:
+ set {_uuid} to uuid of shooter of {_p}
+
+ #player de fora entrar na arena
+ if {eventopilar::players::%{uuid}%::ingame} is false:
+  if PilarDentroArena(location of {_p}):
+   send actionbar "&cvocê não pode invadir a arena!" to shooter of {_p}
+   return true
+ else if {eventopilar::players::%{_uuid}%::ingame} is not set:
+  if PilarDentroArena(location of {_p}):
+   send actionbar "&cvocê não pode invadir a arena!" to shooter of {_p}
+   return true
+
+ #player de dentro sair da arena
+ else if {eventopilar::players::%{_uuid}%::ingame} is true:
+  if not PilarDentroArena(location of {_p}):
+   send actionbar "&cvocê não pode sair da arena!" to shooter of {_p}
+   return true
+ return false
+
+on projectile hit:
+ if PilarNerfProjectile(event-projectile):
+  if projectile is ender pearl: 
+   delete event-projectile
+
+on break:
+ set {_uuid} to uuid of player
+ if {eventopilar::players::%{_uuid}%::ingame} is not true:
+  if player has permission "tab.staff":
+   stop
+
+  if PilarDentroArena(location of block) is true:
+   cancel event
+ else:
+  if {eventopilar::players::blocks::%location of block%} is not set:
+   cancel event
+   
+on place:
+ set {_uuid} to uuid of player
+ if {eventopilar::players::%{_uuid}%::ingame} is not true:
+  if player has permission "tab.staff":
+   stop
+
+  if PilarDentroArena(location of block) is true:
+   cancel event
+ else:
+  if y-coordinate of block < 71:
+   cancel event
+   stop
+
+  if {eventopilar::players::blocks::%location of block%} is not set:
+   set {eventopilar::players::blocks::%location of block%} to location of block
+
+on form:
+ if PilarDentroArena(location of event-block):
+
+  if y-coordinate of event-block >= 71:
+   if {eventopilar::players::blocks::%location of event-block%} is not set:
+    set {eventopilar::players::blocks::%location of event-block%} to location of event-block
+
+function PilarPhysicsBlockRegister(physicsblock: block, comparativeblock: itemtype):
+ if {_physicsblock} is {_comparativeblock}:
+  if PilarDentroArena(location of {_physicsblock}):
+   if y-coordinate of {_physicsblock} >= 71:
+    if {eventopilar::players::blocks::%location of {_physicsblock}%} is not set:
+     set {eventopilar::players::blocks::%location of {_physicsblock}%} to location of {_physicsblock}
+
+on physics:
+ if "%type of event-block%" contains "concrete powder":
+  if PilarDentroArena(location of block):
+   if y-coordinate of block >= 71:
+    if {eventopilar::players::blocks::%location of block%} is not set:
+     set {eventopilar::players::blocks::%location of block%} to location of block
+
+ else:
+  PilarPhysicsBlockRegister(event-block, sand)
+  PilarPhysicsBlockRegister(event-block, red sand)
+  PilarPhysicsBlockRegister(event-block, gravel)
+  PilarPhysicsBlockRegister(event-block, anvil)
+  PilarPhysicsBlockRegister(event-block, chipped anvil)
+  PilarPhysicsBlockRegister(event-block, damaged anvil)
+  PilarPhysicsBlockRegister(event-block, suspicious sand)
+  PilarPhysicsBlockRegister(event-block, suspicious gravel)
+  PilarPhysicsBlockRegister(event-block, dragon egg)
+
+on right click on ender chest:
+ if player has permission "tab.staff":
+  stop
+
+ set {_uuid} to uuid of player
+ if {eventopilar::players::%uuid of player%::ingame} is true:
+  send actionbar "&cVocê não pode usar enderchest durante o jogo!" to player
+  cancel event
+
+on right click:
+ if clicked block is set:
+  if player is sneaking:
+   if player's tool is not air:
+    stop
+
+  if "%type of clicked block%" contains " Bed":
+   if {eventopilar::players::%uuid of player%::ingame} is true:
+    cancel event
+
+on right click on barrier:
+ set {_uuid} to uuid of player
+ if {eventopilar::players::%uuid of player%::ingame} is true:
+  if "%player's tool%" contains "bucket":
+   cancel event
+
+#Ignorar pérolas lançadas por players eliminados
+on projectile hit:
+ if PilarDentroArena(location of projectile):
+  if projectile is ender pearl:
+   if shooter is player:
+    set {_uuid} to uuid of shooter
+    if {eventopilar::players::%{_uuid}%::ingame} is false:
+     cancel event
+
+#Impossibilita a criação de portais do nether dentro da arena
+on portal create:
+ loop blocks in event-blocks:
+  if PilarDentroArena(location of loop-block):
+   cancel event
+   send actionbar "&cVocê não pode criar portais dentro da arena! :)" to player
+   stop loop
+
+
+#Código
+import:
+ com.nickuc.login.api.event.bukkit.auth.AuthenticateEvent
+ com.nickuc.login.api.event.bukkit.auth.SessionLoginEvent
+
+#Eventos
+on AuthenticateEvent:
+ set {_event} to event
+ set {_p} to {_event}.getPlayer()
+ PilarLoginPlayer({_p})
+
+on SessionLoginEvent:
+ set {_event} to event
+ set {_p} to {_event}.getPlayer()
+ PilarLoginPlayer({_p})
+
+function PilarLoginPlayer(p: player):
+ set {_uuid} to uuid of {_p}
+ #Restaura player caso volte enquanto o evento ainda estiver em andamento.
+ if {eventopilar::players::%{_uuid}%::issaved} is set:
+  wait 5 ticks
+  #Forçar saida do mundo - força processo de spawn do player, evitando bugs de teleporte e inventário (server side)
+  if chunk at spawn point of world "world" is not loaded:
+   load chunk at spawn point of world "world"
+  if PilarDentroArena(location of {_p}):
+   teleport {_p} to spawn point of world "world"
+
+  PilarRestauraPlayer({_p})
+  set health of {_p} to max health of {_p}
+  extinguish {_p}
+
+  send "%{@EventoPilarPrefix}% &8player &f%{_p}% &8foi &arestaurado." to console
+  #Remove isquit - flag
+  delete {eventopilar::players::%{_uuid}%::quit}
+
+  #garantia de teleporte - detecta falha
+  wait 1 tick
+  if PilarDentroArena(location of {_p}):
+   if chunk at {eventopilar::players::%{_uuid}%::playersaveloc} is not loaded:
+    load chunk at {eventopilar::players::%{_uuid}%::playersaveloc}
+   teleport {_p} to {eventopilar::players::%{_uuid}%::playersaveloc}
+   send "%{@EventoPilarPrefix}% &8Player &f%{_p}% &8falhou no teleporte de &9login &8e foi &ateleportado novamente" to console
+
+  #deletar dados de restore do player
+  wait 5 ticks
+  delete {eventopilar::players::%{_uuid}%::*}
+
+ #Restaura player caso tenha voltado após o evento ter terminado.
+ if {eventopilarplayersbackup::%{_uuid}%::isbackup} is set:
+  wait 5 ticks
+  #Forçar saida do mundo - força processo de spawn do player, evitando bugs de teleporte e inventário (server side)
+  if chunk at spawn point of world "world" is not loaded:
+   load chunk at spawn point of world "world"
+  if PilarDentroArena(location of {_p}):
+   teleport {_p} to spawn point of world "world"
+
+  PilarRestauraBackup({_p})
+  set health of {_p} to max health of {_p}
+  extinguish {_p}
+
+  send "%{@EventoPilarPrefix}% &8Player &f%{_p}% &8foi &arestaurado &8a partir de &d&lbackup." to console
+
+  #Garantia de teleporte - detecta falha
+  wait 1 tick
+  if PilarDentroArena(location of {_p}):
+   if chunk at {eventopilarplayersbackup::%{_uuid}%::playersaveloc} is not loaded:
+    load chunk at {eventopilarplayersbackup::%{_uuid}%::playersaveloc}
+   teleport {_p} to {eventopilarplayersbackup::%{_uuid}%::playersaveloc}
+   send "%{@EventoPilarPrefix}% &8Player &f%{_p}% &8falhou no teleporte de &dbackup &8e foi &ateleportado novamente" to console
+
+  #deletar backup do player
+  wait 5 ticks
+  delete {eventopilarplayersbackup::%{_uuid}%::*}
+
+
+function PilarRecompensarWinner(w: player):
+ if {eventopilar::recompensa} is "competitivo":
+  send title "&aVocê é o vencedor!" to {_w}
+  send subtitle "&7você recebeu &f1 &aSerkron &7e uma &5Tag Exclusiva&7!" to {_w}
+  give glowing {MoedaModeloSerkron} to {_w}
+
+ else if {eventopilar::recompensa} is "premiado":
+  send title "&aVocê é o vencedor!" to {_w}
+  send subtitle "&7você recebeu uma recompensa" to {_w}
+  give 3 of glowing {MoedaModeloSerp} to {_w}
+  
+ else:
+  send title "&aVocê é o vencedor!" to {_w}
+
+function PilarUltimoPlayerEnding(c: number):
+ if {_c} <= 1:
+  # deletar flags de final fight e timer caso existam
+  if {eventopilar::finalfight} is set:
+   delete {eventopilar::finalfight}
+   delete {eventopilar::Timer}
+  set {eventopilar::State} to "open"
+  PilarLimparArena()
+
+  #Lógica de término do evento e declaração do vencedor
+  loop indices of {eventopilar::players::*}:
+   set {_uuidwinner} to loop-value
+   if {eventopilar::players::%{_uuidwinner}%::ingame} is true:
+    set {_winner} to {_uuidwinner} parsed as offline player
+
+    #Restaura o último player.
+    if {eventopilar::players::%{_uuidwinner}%::issaved} is set:
+              
+     close {_winner}'s inventory # Evita drag de cursor item 
+     PilarRestauraPlayer({_winner})
+     set health of {_winner} to max health of {_winner}
+     extinguish {_winner}
+
+     wait 5 ticks
+     #deletar dados de restore do player
+     delete {eventopilar::players::%{_uuidwinner}%::*}
+
+     #Recompensa dinâmica
+     PilarRecompensarWinner({_winner})
+
+function PilarStartFinalFight(c: number):
+ if {_c} == 2: # Inicia quando restarem somente 2 players
+  set {eventopilar::finalfight} to true
+  loop indices of {eventopilar::players::*}:
+   set {_uuidfinal} to loop-value
+   if {eventopilar::players::%{_uuidfinal}%::ingame} is true:
+    set {_playerfinal} to {_uuidfinal} parsed as offline player
+    send title "&fFinal Fight!" to {_playerfinal}
+    send subtitle "&9O player &bmais alto &9ou &cúltimo vivo &9vence!" to {_playerfinal}
+    play sound "entity.ender_dragon.growl" with volume 0.5 and pitch 1.50 at location of {_playerfinal}
+
+#Saída de player do jogo
+on quit:
+ set {_uuid} to uuid of player
+ if {eventopilar::players::%{_uuid}%::ingame} is true:
+  if PilarDentroArena(location of player):
+   set {eventopilar::players::%{_uuid}%::ingame} to false
+   set {eventopilar::players::%{_uuid}%::quit} to true
+
+  #contar players atuais do evento
+  set {_contador} to 0
+  loop indices of {eventopilar::players::*}:
+   set {_uuidcontador} to loop-value
+   if {eventopilar::players::%{_uuidcontador}%::ingame} is true:
+    add 1 to {_contador}
+
+  set {eventopilar::qtdplayers} to {_contador}
+
+  #Avisar Eliminação
+  loop all players:
+   if PilarDentroArena(location of loop-player):
+    send "%{@EventoPilarPrefix}% &f%player% &6abandonou o jogo!" to loop-player
+    send "%{@EventoPilarPrefix}%  &6Restam &c(&f%{_contador}% &6player(s)&c)" to loop-player
+
+
+  #Timer Final Fight caso reste 2 players
+  PilarStartFinalFight({_contador})
+
+  #Terminar automaticamente o evento caso reste apenas 1 player
+  PilarUltimoPlayerEnding({_contador})
+
+#Morte de player - lógica de eliminação
+on death of player:
+ if PilarDentroArena(location of victim):
+  #lógica de eliminação
+  set {_uuid} to uuid of victim
+  if {eventopilar::players::%{_uuid}%::ingame} is true:
+   cancel event
+
+   #TOTEM
+   if victim's off hand is totem of undying:
+    stop
+   if victim's tool is totem of undying:
+    stop
+
+   #Morte fake - eliminação
+   drop all items of victim
+   set {eventopilar::players::%{_uuid}%::ingame} to false
+   play sound "block.anvil.land" with volume 2 and pitch 1.80 at location of victim
+   
+   wait 1 tick
+   set {eventopilar::pendingdeath::%{_uuid}%} to true
+   
+   #contar players atuais do evento
+   set {_contador} to 0
+   loop indices of {eventopilar::players::*}:
+    set {_uuidcontador} to loop-value
+    if {eventopilar::players::%{_uuidcontador}%::ingame} is true:
+     add 1 to {_contador}
+   
+   set {eventopilar::qtdplayers} to {_contador}
+
+   #Avisar Eliminação
+   loop all players:
+    if PilarDentroArena(location of loop-player):
+     set {_killer} to attacker
+     if attacker is a projectile:
+      set {_killer} to shooter
+
+     if {_killer} is a player:
+      send "%{@EventoPilarPrefix}% &f%victim% &cfoi eliminado por &f%attacker%! " to loop-player
+      send "%{@EventoPilarPrefix}%  &6Restam &c(&f%{_contador}% &6player(s)&c)" to loop-player
+     else:
+      send "%{@EventoPilarPrefix}% &f%victim% &cfoi eliminado! " to loop-player
+      send "%{@EventoPilarPrefix}%  &6Restam &c(&f%{_contador}% &6player(s)&c)" to loop-player
+
+   #Avisar o player
+   send title "&cVocê foi eliminado!" to victim
+
+
+   #Timer Final Fight caso reste 2 players
+   PilarStartFinalFight({_contador})
+
+   #Terminar automaticamente o evento caso reste apenas 1 player
+   PilarUltimoPlayerEnding({_contador})
+
+ wait 1 tick
+ #== STATE MACHINE ## EXECUÇÃO DE PENDING DEATH =========================
+ # Lógica de eliminação
+ loop indices of {eventopilar::pendingdeath::*}:
+
+  set {_uuid} to loop-value
+  set {_p} to {_uuid} parsed as offline player
+
+  #Forçar saida do mundo - força processo de spawn do player, evitando bugs de teleporte e inventário (server side)
+  if PilarDentroArena(location of {_p}):
+   if chunk at spawn point of world "world" is not loaded:
+    load chunk at spawn point of world "world"
+   teleport {_p} to spawn point of world "world"
+   
+   if {eventopilar::players::%{_uuid}%::issaved} is set:
+            
+    close {_p}'s inventory # Evita drag de cursor item 
+    PilarRestauraPlayer({_p})
+
+   set health of {_p} to max health of {_p}
+   extinguish {_p}
+
+   #remove pendingdeath - limpa flag
+   delete {eventopilar::pendingdeath::%{_uuid}%}
+
+   #garantia de teleporte - detecta falha
+   wait 1 tick
+   if PilarDentroArena(location of {_p}):
+    if chunk at {eventopilar::players::%{_uuid}%::playersaveloc} is not loaded:
+     load chunk at {eventopilar::players::%{_uuid}%::playersaveloc}
+    teleport {_p} to {eventopilar::players::%{_uuid}%::playersaveloc}
+    send "%{@EventoPilarPrefix}% &8Player &f%{_p}% &8falhou no teleporte de &celiminação &8e foi &ateleportado novamente" to console
+
+   wait 5 ticks
+   #deletar dados de restore do player
+   delete {eventopilar::players::%{_uuid}%::*}
+
+#Dano de player - lógica de pvp e lógica de eliminação
+on damage of player:
+ if PilarDentroArena(location of victim):
+  #lógica de pvp state
+  if {eventopilar::PVP} is false:
+   set {_killer} to attacker
+   if attacker is a projectile:
+    set {_killer} to shooter
+
+   set {_uuidk} to uuid of {_killer}
+   set {_uuidv} to uuid of victim
+   if {eventopilar::players::%{_uuidk}%::ingame} is not set:
+    stop
+   if {eventopilar::players::%{_uuidv}%::ingame} is not set:
+    stop
+    
+   cancel event
+
+
+
+
+
+#-- FUNÇÕES ##########################################################################################
+#Função para salvar player
+function PilarSalvarPlayer(uuid: string, p: player):
+ #confirmação de save - flag
+ set {eventopilar::players::%{_uuid}%::issaved} to true
+
+ #Salva localização
+ set {eventopilar::players::%{_uuid}%::playersaveloc} to spawn point of world "world"
+    
+ #Salva inventário, xp e efeitos
+ loop 36 times:
+  set {_slot} to loop-number -1
+  set {eventopilar::players::%{_uuid}%::playersaveinv::%{_slot}%} to slot {_slot} of {_p}'s inventory
+
+ set {eventopilar::players::%{_uuid}%::playersaveinv::helmet} to helmet of {_p}
+ set {eventopilar::players::%{_uuid}%::playersaveinv::chestplate} to chestplate of {_p}
+ set {eventopilar::players::%{_uuid}%::playersaveinv::leggings} to leggings of {_p}
+ set {eventopilar::players::%{_uuid}%::playersaveinv::boots} to boots of {_p}
+ set {eventopilar::players::%{_uuid}%::playersaveinv::offhand} to off hand of {_p}
+    
+ set {eventopilar::players::%{_uuid}%::playersaveexp::level} to level of {_p}
+ set {eventopilar::players::%{_uuid}%::playersaveexp::exp} to experience of {_p}
+ loop potion effects of {_p}:
+  add loop-value to {eventopilar::players::%{_uuid}%::playersaveeffects::*} 
+
+
+#Função para restaurar player
+function PilarRestauraPlayer(p: player):
+ set {_uuid} to uuid of {_p}
+ 
+ #Limpar Flags do player
+ delete {eventopilar::players::%{_uuid}%::issaved}
+
+ #Restaurar o player
+ #Inventário
+ clear {_p}'s inventory
+ loop {eventopilar::players::%{_uuid}%::playersaveinv::*}:
+  set {_slot} to loop-index parsed as number
+  set slot {_slot} of {_p} to loop-value
+ 
+ set helmet of {_p} to {eventopilar::players::%{_uuid}%::playersaveinv::helmet}
+ set chestplate of {_p} to {eventopilar::players::%{_uuid}%::playersaveinv::chestplate}
+ set leggings of {_p} to {eventopilar::players::%{_uuid}%::playersaveinv::leggings}
+ set boots of {_p} to {eventopilar::players::%{_uuid}%::playersaveinv::boots}
+ set off hand of {_p} to {eventopilar::players::%{_uuid}%::playersaveinv::offhand}
+
+ #Nível e exp
+ set level of {_p} to {eventopilar::players::%{_uuid}%::playersaveexp::level}
+ set experience of {_p} to {eventopilar::players::%{_uuid}%::playersaveexp::exp}
+ #Efeitos
+ clear potion effects of {_p}
+ loop {eventopilar::players::%{_uuid}%::playersaveeffects::*}:
+  apply loop-value to {_p}
+ #Gamemode survival
+ set gamemode of {_p} to survival
+
+ #Teleporta player para localização salva
+ if {eventopilar::players::%{_uuid}%::playersaveloc} is set:
+  if chunk at {eventopilar::players::%{_uuid}%::playersaveloc} is not loaded:
+   load chunk at {eventopilar::players::%{_uuid}%::playersaveloc}
+  wait 5 ticks
+  teleport {_p} to {eventopilar::players::%{_uuid}%::playersaveloc}
+ else:
+  if chunk at spawn point of world "world" is not loaded:
+   load chunk at spawn point of world "world"
+  wait 5 ticks
+  teleport {_p} to spawn point of world "world"
+
+# BACKUP -------- SALVAR PLAYER
+function PilarSalvaBackup(uuid: string):
+ #Confirmação de backup - flag
+ set {eventopilarplayersbackup::%{_uuid}%::isbackup} to true
+ #Salva localização
+ set {eventopilarplayersbackup::%{_uuid}%::playersaveloc} to {eventopilar::players::%{_uuid}%::playersaveloc}
+  
+ #Salva inventário, xp e efeitos
+ loop 36 times:
+  set {_slot} to loop-number - 1
+  set {eventopilarplayersbackup::%{_uuid}%::playersaveinv::%{_slot}%} to {eventopilar::players::%{_uuid}%::playersaveinv::%{_slot}%}
+
+  set {eventopilarplayersbackup::%{_uuid}%::playersaveinv::helmet} to {eventopilar::players::%{_uuid}%::playersaveinv::helmet}
+  set {eventopilarplayersbackup::%{_uuid}%::playersaveinv::chestplate} to {eventopilar::players::%{_uuid}%::playersaveinv::chestplate}
+  set {eventopilarplayersbackup::%{_uuid}%::playersaveinv::leggings} to {eventopilar::players::%{_uuid}%::playersaveinv::leggings}
+  set {eventopilarplayersbackup::%{_uuid}%::playersaveinv::boots} to {eventopilar::players::%{_uuid}%::playersaveinv::boots}
+  set {eventopilarplayersbackup::%{_uuid}%::playersaveinv::offhand} to {eventopilar::players::%{_uuid}%::playersaveinv::offhand}
+
+  set {eventopilarplayersbackup::%{_uuid}%::playersaveexp::level} to {eventopilar::players::%{_uuid}%::playersaveexp::level}
+  set {eventopilarplayersbackup::%{_uuid}%::playersaveexp::exp} to {eventopilar::players::%{_uuid}%::playersaveexp::exp}
+ loop {eventopilar::players::%{_uuid}%::playersaveeffects::*}:
+  add loop-value to {eventopilarplayersbackup::%{_uuid}%::playersaveeffects::*}
+
+# BACKUP -------- RESTAURAR PLAYER
+function PilarRestauraBackup(p: player):
+ set {_uuid} to uuid of {_p}
+
+ #teleporta player para localização salva
+ if {eventopilarplayersbackup::%{_uuid}%::playersaveloc} is set:
+  if chunk at {eventopilarplayersbackup::%{_uuid}%::playersaveloc} is not loaded:
+   load chunk at {eventopilarplayersbackup::%{_uuid}%::playersaveloc}
+  wait 5 ticks
+  teleport {_p} to {eventopilarplayersbackup::%{_uuid}%::playersaveloc}
+ else:
+  if chunk at spawn point of world "world" is not loaded:
+   load chunk at spawn point of world "world"
+  wait 5 ticks
+  teleport {_p} to spawn point of world "world"
+
+ #Restaurar o player
+ #Inventário
+ clear {_p}'s inventory
+ loop {eventopilarplayersbackup::%{_uuid}%::playersaveinv::*}:
+  set {_slot} to loop-index parsed as number
+  set slot {_slot} of {_p} to loop-value
+
+ set helmet of {_p} to {eventopilarplayersbackup::%{_uuid}%::playersaveinv::helmet}
+ set chestplate of {_p} to {eventopilarplayersbackup::%{_uuid}%::playersaveinv::chestplate}
+ set leggings of {_p} to {eventopilarplayersbackup::%{_uuid}%::playersaveinv::leggings}
+ set boots of {_p} to {eventopilarplayersbackup::%{_uuid}%::playersaveinv::boots}
+ set off hand of {_p} to {eventopilarplayersbackup::%{_uuid}%::playersaveinv::offhand}
+
+ #Nível e exp
+ set level of {_p} to {eventopilarplayersbackup::%{_uuid}%::playersaveexp::level}
+ set experience of {_p} to {eventopilarplayersbackup::%{_uuid}%::playersaveexp::exp}
+ #Efeitos
+ clear potion effects of {_p}
+ loop {eventopilarplayersbackup::%{_uuid}%::playersaveeffects::*}:
+  apply loop-value to {_p} 
+ #Gamemode survival
+ set gamemode of {_p} to survival
+
+ #Limpar Flags do player
+ delete {eventopilarplayersbackup::%{_uuid}%::isbackup}
+
+#####################################
+#         evento
+#####################################
+
+#Entrar no evento
+function PilarEntrarNoEvento(p: player):
+ set {_uuid} to uuid of {_p}
+ #Entrar no Minigame
+ close {_p}'s inventory # Evita drag de cursor item 
+ PilarSalvarPlayer({_uuid}, {_p})
+ set {eventopilar::players::%{_uuid}%::ingame} to true
+ wait 2 tick
+
+ #PRESETS
+ clear {_p}'s inventory
+ clear level of {_p}
+ clear experience of {_p}
+ clear potion effects of {_p}
+ set health of {_p} to max health of {_p}
+ set food of {_p} to 20
+ give bread to {_p}
+ apply slowness 255 to {_p} for 5 seconds
+
+ #desativa fly dos vips durante o evento =------------------------------- VIPS
+ if gamemode of {_p} is survival:
+  if flight mode of {_p} is true:
+   set flight mode of {_p} to false
+ #guarda pet dos vips durante o evento =------------------------------- VIPS
+ set {_petstatusvictim} to value of placeholder "mypet_status" for {_p}
+ if {_petstatusvictim} is "Here":
+  execute console command "petsendaway %{_p}%"
+  send "&bSeu pet foi guardado!" to {_p}
+  send "&bvocê poderá chamá-lo ao &6final do evento!" to {_p}
+
+ #contar players atuais do evento
+ set {_contador} to 0
+ loop indices of {eventopilar::players::*}:
+  set {_uuidcontador} to loop-value
+  if {eventopilar::players::%{_uuidcontador}%::ingame} is true:
+   add 1 to {_contador}
+
+ set {eventopilar::qtdplayers} to {_contador}
+
+function PilarDentroEntrada(loc: location) :: boolean:
+ if world of {_loc} is not world "world":
+  return false
+
+ set {_x} to x-coordinate of {_loc}
+ set {_y} to y-coordinate of {_loc}
+ set {_z} to z-coordinate of {_loc}
+
+ if {_x} >= 79:
+  if {_x} <= 87:
+   if {_y} >= 127:
+    if {_y} <= 131:
+     if {_z} >= 31:
+      if {_z} <= 35:
+       return true
+
+ if {_x} >= 100:
+  if {_x} <= 106:
+   if {_y} >= 143:
+    if {_y} <= 147:
+     if {_z} >= 109:
+      if {_z} <= 112:
+       return true
+
+ return false
+
+function PilarDefinirRecompensas(c: number):
+ if {_c} == 12:
+  set {eventopilar::recompensa} to "competitivo"
+ else if {_c} >= 6:
+  set {eventopilar::recompensa} to "premiado"
+ else:
+  delete {eventopilar::recompensa}
+ 
+every 1 second:
+ if {eventopilar::State} is "open":
+  if {eventopilar::entrada} is not "green":
+   loop blocks within location(87,127,35, world "world") and location(79,131,31, world "world"):
+    if loop-block is red concrete:
+     set block at loop-block to green concrete
+
+   loop blocks within location(106, 143, 112, world "world") and location(100, 147, 109, world "world"):
+    if loop-block is red concrete:
+     set block at loop-block to green concrete
+   set {eventopilar::entrada} to "green"
+  
+  if {eventopilar::Timer} is not set:
+   set {eventopilar::Timer} to 30
+
+  subtract 1 from {eventopilar::Timer}
+
+  #Avisar players sobre tempo para entrada
+  loop all players:
+   if PilarDentroEntrada(location of loop-player):
+    send actionbar "&cIniciando em &f%{eventopilar::Timer}%s" to loop-player
+  
+  if {eventopilar::Timer} < 1:
+   delete {eventopilar::Timer}
+
+   #contar players na entrada
+   clear {_players::*}
+   set {_contador} to 0
+   loop all players:
+    if PilarDentroEntrada(location of loop-player):
+     add 1 to {_contador}
+     add loop-player to {_players::*}
+   
+   if {_contador} > ({@MinimoPlayers} - 1): #Requisito mínimo de players para iniciar o evento - 2 players
+    #repor itens do centro da arena
+    set {_inv} to inventory of block at location(106.5, 70, 135.5, world "world")
+    clear {_inv}
+    if slot 4 of {_inv} is not firework:
+     set slot 4 of {_inv} to firework
+    if slot 13 of {_inv} is not ender pearl:
+     set slot 13 of {_inv} to ender pearl
+    if slot 22 of {_inv} is not wind charge:
+     set slot 22 of {_inv} to wind charge
+
+    #lógica de início do evento
+    set {eventopilar::State} to "closed"
+    set {_spawns::*} to {eventopilar::Spawns::*}
+     
+    clear {_ingamecount}
+    loop size of {_players::*} times:
+     set {_randomPlayer} to random element out of {_players::*}
+     set {_randomSpawn} to random element out of {_spawns::*}
+     
+     if {_randomSpawn} is set:
+      remove {_randomPlayer} from {_players::*}
+      remove {_randomSpawn} from {_spawns::*}
+     
+      PilarEntrarNoEvento({_randomPlayer})
+      teleport {_randomPlayer} to {_randomSpawn}
+      add 1 to {_ingamecount}
+
+     else:
+      send title "&cVocê nao foi chamado :(" to {_randomPlayer}
+      send subtitle "&cO limite de players foi atingido" to {_randomPlayer}
+
+    #Define Tipo da partida (Recompensas)
+    PilarDefinirRecompensas({_ingamecount})
+
+    #Avisar quantidade de players e nível de recompensa para os participantes
+    loop indices of {eventopilar::players::*}:
+     if {eventopilar::players::%loop-value%::ingame} is true:
+      set {_ingameplayer} to loop-value parsed as offline player
+
+      if {eventopilar::recompensa} is "competitivo":
+       send title "&5Partida Competitiva!" to {_ingameplayer}
+       send subtitle "&f(&f%{_ingamecount}% &9players&f) &7A recompensa será maior!" to {_ingameplayer} 
+       play sound "entity.elder_guardian.curse" to {_ingameplayer} 
+      else if {eventopilar::recompensa} is "premiado":
+       send title "&6Partida Premiada!" to {_ingameplayer}
+       send subtitle "&f(&f%{_ingamecount}% &9players&f) &7O vencedor será recompensado!" to {_ingameplayer}
+       play sound "block.amethyst_block.break" to {_ingameplayer} 
+      else:
+       send title "&7Partida casual!" to {_ingameplayer}
+       send subtitle "&f(&f%{_ingamecount}% &9players&f)" to {_ingameplayer}
+       play sound "entity.experience_orb.pickup" to {_ingameplayer} 
+
+    #Timer Final Fight caso entre somente 2 players
+    PilarStartFinalFight({_ingamecount})
+
+   else:
+    loop all players:
+     if PilarDentroEntrada(location of loop-player):
+      send actionbar "&cfalta players! &6Min: %{@MinimoPlayers}%" to loop-player
+
+ else if {eventopilar::State} is "closed":
+  if {eventopilar::entrada} is not "red":
+   loop blocks within location(87,127,35, world "world") and location(79,131,31, world "world"):
+    if loop-block is green concrete:
+     set block at loop-block to red concrete
+
+   loop blocks within location(106, 143, 112, world "world") and location(100, 147, 109, world "world"):
+    if loop-block is green concrete:
+     set block at loop-block to red concrete
+
+   set {eventopilar::entrada} to "red"
+
+  loop all players:
+   if PilarDentroEntrada(location of loop-player):
+    #contar players atuais do evento
+    set {_contador} to 0
+    loop indices of {eventopilar::players::*}:
+     set {_uuidcontador} to loop-value-2
+     if {eventopilar::players::%{_uuidcontador}%::ingame} is true:
+      add 1 to {_contador}
+    
+    if {eventopilar::finalfight} is set:
+     send actionbar "&cAguarde... &6vivos: %{_contador}% &7restam: %{eventopilar::Timer}%" to loop-player
+    else:
+     send actionbar "&cAguarde... &6vivos: %{_contador}%" to loop-player
+
+  if {eventopilar::finalfight} is set:
+   if {eventopilar::Timer} is not set:
+    set {eventopilar::Timer} to 2 minutes
+
+   subtract 1 second from {eventopilar::Timer}
+   
+   #Avisar players no jogo sobre tempo para final fight
+   loop indices of {eventopilar::players::*}:
+    set {_uuidfinal} to loop-value
+    if {eventopilar::players::%{_uuidfinal}%::ingame} is true:
+     set {_playerfinal} to {_uuidfinal} parsed as offline player
+     send actionbar "&9Restam: &f%{eventopilar::Timer}%" to {_playerfinal}
+
+   if {eventopilar::Timer} == 0 seconds:
+    delete {eventopilar::finalfight}
+    delete {eventopilar::Timer}
+    set {eventopilar::State} to "open"
+    PilarLimparArena()
+
+    clear {_highestplayer}
+    clear {_lasthighestplayer}
+    set {_highesty} to -999
+    set {_lasthighesty} to -999
+
+    #Define o player com a maior altura
+    loop indices of {eventopilar::players::*}:
+     set {_uuidwinner} to loop-value
+     if {eventopilar::players::%{_uuidwinner}%::ingame} is true:
+      set {_winner} to {_uuidwinner} parsed as offline player
+
+      #Define o player com a maior altura
+      set {_y} to round(y-coordinate of location of {_winner})
+      if {_y} > {_highesty}:
+       set {_lasthighesty} to {_highesty}
+       set {_lasthighestplayer} to {_highestplayer}
+
+       set {_highesty} to {_y}
+       set {_highestplayer} to {_winner}
+      else:
+       set {_lasthighesty} to {_y}
+       set {_lasthighestplayer} to {_winner}
+
+    #Restaura os players.
+    loop indices of {eventopilar::players::*}:
+     set {_uuid} to loop-value
+     set {_player} to {_uuid} parsed as offline player
+     #Restaura os players.
+     if {eventopilar::players::%{_uuid}%::issaved} is set:
+                
+      close {_player}'s inventory # Evita drag de cursor item 
+      PilarRestauraPlayer({_player})
+      set health of {_player} to max health of {_player}
+      extinguish {_player}
+      
+     wait 5 ticks
+     #deletar dados de restore do player
+     delete {eventopilar::players::%{_uuid}%::*}
+    
+    wait 5 ticks
+    #Recompensa o vencedor do final fight
+    if {_highestplayer} is set:
+     if {_lasthighestplayer} is set:
+      #Empate
+      if {_highesty} == {_lasthighesty}:
+       send title "&9Empate!" to {_highestplayer}
+       send title "&9Empate!" to {_lasthighestplayer}
+       send subtitle "&7Ninguem recebe nada" to {_highestplayer}
+       send subtitle "&7Ninguem recebe nada" to {_lasthighestplayer}
+      #Vitória limpa
+      else:
+       #Recompensa Dinâmica
+       PilarRecompensarWinner({_highestplayer})
+
+
+
+#Mecânica itens aleatórios
+every 4 seconds:
+ if {eventopilar::State} is "closed":
+  set {_localpool::*} to {eventopilar::ItensPool::*} #Acessa o banco de dados global somente uma vez por execução
+  loop all players:
+   set {_uuid} to uuid of loop-player
+   if {eventopilar::players::%{_uuid}%::ingame} is true:
+    if PilarDentroArena(location of loop-player):
+
+     set {_item} to random element out of {_localpool::*}
+     
+     if {_item} is not air:
+      give {_item} to loop-player
+
+#Iniciar evento
+command /EventoPilar [<text>] [<text>]:
+ permission: op
+ trigger:
+  if arg-1 is "teste":
+   PilarEntrarNoEvento(player)
+   
+  # Comandos admnistrativos ############################################################
+  if arg-1 is "start": #Inicia o evento e aplica presets
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+    
+   #setting presets
+   if {eventopilar::Spawn} is not set:
+    
+    set {eventopilar::Arena::Center} to location(106, 71, 135, world "world")
+    set {eventopilar::Arena::Radius} to 20
+    set {eventopilar::World} to world "world"
+    set {eventopilar::PVP} to true
+    set {eventopilar::State} to "open"
+    set {eventopilar::Spawns::1} to location(106.5, 105, 119.5, world "world")
+    set {eventopilar::Spawns::2} to location(116.5, 105, 125.5, world "world")
+    set {eventopilar::Spawns::3} to location(122.5, 105, 135.5, world "world")
+    set {eventopilar::Spawns::4} to location(116.5, 105, 145.5, world "world")
+    set {eventopilar::Spawns::5} to location(106.5, 105, 151.5, world "world")
+    set {eventopilar::Spawns::6} to location(96.5, 105, 145.5, world "world")
+    set {eventopilar::Spawns::7} to location(90.5, 105, 135.5, world "world")
+    set {eventopilar::Spawns::8} to location(96.5, 105, 125.5, world "world")
+    set {eventopilar::Spawns::9} to location(100.5, 105, 135.5, world "world")
+    set {eventopilar::Spawns::10} to location(106.5, 105, 129.5, world "world")
+    set {eventopilar::Spawns::11} to location(112.5, 105, 135.5, world "world")
+    set {eventopilar::Spawns::12} to location(106.5, 105, 141.5, world "world")
+    
+    clear {eventopilar::ItensPool::*}
+    loop all items:
+     if loop-item is not wither spawn egg:
+      if loop-item is not ender dragon spawn egg:
+       if loop-item is not structure block:
+        if loop-item is not barrier:
+         if loop-item is not bedrock:
+          if loop-item is not end portal frame:
+           if loop-item is not end gateway:
+            if loop-item is not dragon egg:
+             if loop-item is not wither skeleton skull:
+              if "%type of loop-item%" doesn't contain "command":
+               if loop-item is not structure void:
+                if loop-item is not ender chest:
+                 if loop-item is not happy ghast spawn egg:
+                  if "%type of loop-item%" doesn't contain "harness":
+                   add loop-item to {eventopilar::ItensPool::*}
+
+    send "%{@EventoPilarPrefix}% &9Evento &aIniciado!" to sender
+    send "%{@EventoPilarPrefix}% &7%size of {eventopilar::ItensPool::*}% &5itens &7carregados com sucesso!" to sender
+    send "&8&m                             " to sender
+    send "&9        PRESETS                " to sender
+    send "&8&m                             " to sender
+    send "&cPVP&7: &r%{eventopilar::PVP}%" to sender
+    send "&8&m                             " to sender
+    send "&a        CHANGES                " to sender
+    send "" to sender
+    send "&6Build 0.1&7: &rEvento criado" to sender
+   else:
+    send "%{@EventoPilarPrefix}% &cO evento já foi iniciado!" to sender
+
+  if arg-1 is "end": #-Termina evento
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+
+   if {eventopilar::State} is set:
+    set {eventopilar::State} to "closed"
+    PilarLimparArena()
+
+    loop indices of {eventopilar::players::*}:
+     set {_uuid} to loop-value
+     if {eventopilar::players::%{_uuid}%::ingame} is true: 
+      set {_p} to {_uuid} parsed as offline player
+
+      #Avisa players do encerramento do evento (dentro da arena)
+      send title "&cEvento fechado" to {_p}
+ 
+      #Restaura player caso o evento termine enquanto ele estiver no evento.
+      if {eventopilar::players::%{_uuid}%::issaved} is set:  
+       close {_p}'s inventory # Evita drag de cursor item      
+       PilarRestauraPlayer({_p})
+
+     #Salva Backup dos dados dos players que saíram do jogo
+     if {eventopilar::players::%{_uuid}%::quit} is true:
+      set {_p} to {_uuid} parsed as offline player
+
+      PilarSalvaBackup({_uuid})
+      send "%{@EventoPilarPrefix}% &cPlayer &f%{_p}% &csaiu do jogo. &dBackup dos dados &asalvo." to console
+
+    #Avisa players do encerramento do evento (Na entrada)
+    loop all players:
+     if PilarDentroEntrada(location of loop-player):
+      send title "&cEvento fechado" to loop-player
+
+    #Limpar flags gerais
+    wait 5 ticks
+    delete {eventopilar::*}
+
+    send "%{@EventoPilarPrefix}% &cEvento terminado" to sender
+   else:
+    send "%{@EventoPilarPrefix}% &cNão há evento em andamento" to sender
+
+on tab complete of "/EventoPilar":
+ if player is op:
+  set tab completions for position 1 to "start" and "end"
+
+
+
+on command: 
+ if player has permission "tab.staff":
+  stop
+ #### COMANDOS PERMITIDOS NO EVENTO ####
+ set {_blocked::1} to "g"
+ set {_blocked::2} to "."
+ set {_blocked::3} to "tell"
+ set {_blocked::4} to "msg"
+ set {_blocked::5} to "r"
+ 
+ if {eventopilar::players::%uuid of player%::ingame} is true:
+  loop {_blocked::*}:
+   if command is not {_blocked::%loop-index%}:
+    cancel event
+    send "&cVocê não pode usar esse comando neste evento!"
+    stop
+
+#Cria placeholder da quantidade de players vivos
+placeholderapi placeholder with the prefix "eventopilar":
+ if the identifier is "qtdplayers":
+  if {eventopilar::qtdplayers} is set: 
+   set the result to "%{eventopilar::qtdplayers}%"
+  else:
+   set the result to "0"
+
+command /Eventopilardebug <player>:
+ trigger:
+  set {_uuid} to uuid of arg-1
+  if {eventopilar::players::%{_uuid}%::ingame} is set:
+   send "&aINVENTÁRIO SALVO" to player
+   send {eventopilar::players::%{_uuid}%::playersaveinv::*} to player
+   send "&aDADOS EVENTO" to player
+   send "ingame: %{eventopilar::players::%{_uuid}%::ingame}%" to player
+   if {eventopilar::players::%{_uuid}%::issaved} is set:
+    send "issaved: %{eventopilar::players::%{_uuid}%::issaved}%" to player
+   else:
+    send "issaved: not set" to player
+   if {eventopilar::players::%{_uuid}%::quit} is set:
+    send "Quit: %{eventopilar::players::%{_uuid}%::quit}%" to player
+   else:
+    send "Quit: not set" to player
+   send "SaveLoc: %{eventopilar::players::%{_uuid}%::playersaveloc}%" to player
+  else:
+   send "&cPlayer não participou do evento ou não entrou no jogo." to player
+  send "MundoAtual: &6%world of arg-1%"
+  if {eventopilarplayersbackup::%{_uuid}%::isbackup} is set:
+   send "&aDADOS BACKUP" to player
+   send "isbackup: %{eventopilarplayersbackup::%{_uuid}%::isbackup}%" to player
+  else:
+   send "&aDADOS BACKUP" to player
+   send "&cPlayer não tem backup salvo." to player
+  send "&9player: &f%arg-1%" to player
+
+command /Eventopilardebug2:
+ permission: op
+ trigger:
+  send {eventopilar::players::blocks::*} to player
+  loop indices of {eventopilar::players::*}:
+   set {_uuid} to loop-value
+   send "UUID: %{_uuid}%" to player
+
+  
+     

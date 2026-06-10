@@ -1,0 +1,277 @@
+# CombatLog.sk
+# by lKaerys :I
+# dependencies: Skquery, permSK, skript placeholders
+
+# Configurações básicas
+options:
+ # Tempo de combate em segundos
+ combatTime: 20 seconds
+ # Permissão para ignorar combate
+ bypassPermission: "combatlog.bypass"
+
+on load:
+ set {CombatLogWorld::1} to "world"
+ set {CombatLogWorld::2} to "world_the_end"
+ set {CombatLogWorld::3} to "world_nether"
+
+# Punições para combat log
+function Punicoes(p: player, pw: world):
+
+# Loop em todos os itens do inventário principal
+ loop all items in {_p}'s inventory:
+  drop loop-item at {_p}
+  remove loop-item from {_p}'s inventory
+
+ kill {_p}
+ 
+ #identifica o mundo em que o player quitou
+ set {_isCombatWorld} to false
+ loop {CombatLogWorld::*}:
+  if "%{_pw}%" is loop-value:
+   set {_isCombatWorld} to true
+
+ if {_isCombatWorld} is true: #se quitar em um mundo DENTRO da lista, todos os mundos da lista recebem a mensagem.
+  loop all players:
+   loop {CombatLogWorld::*}:
+    if "%world of loop-player%" is loop-value-2:
+     send "&e&l[COMBATLOG] &f&r%{_p}% &cfugiu de combate!" to loop-player
+ else: #se quitar em um mundo FORA da lista, somente aquele mundo recebe a mensagem.
+  loop players in {_pw}:
+   send "&e&l[COMBATLOG] &f&r%{_p}% &cfugiu de combate!" to loop-player
+
+# -------------------------------
+# Entrar em combate
+# -------------------------------
+on damage of player by player:
+ set {_isCombatWorld} to false
+ loop {CombatLogWorld::*}: #Checa se o mundo é combatlog
+  if "%world of victim%" is loop-value:
+   set {_isCombatWorld} to true
+ if {_isCombatWorld} is false:
+  stop
+
+ #Se estiver em evento pilar, não ativa combatlog -------------------------------- eventopilar.sk
+ if {eventopilar::players::%uuid of victim%::ingame} is set:
+  stop
+ if {eventopilar::players::%uuid of attacker%::ingame} is set:
+  stop
+
+ if victim has permission {@bypassPermission}:
+  stop
+ if attacker has permission {@bypassPermission}:
+  stop
+ if gamemode of victim is not survival:
+  stop
+ if gamemode of attacker is not survival:
+  stop
+
+ 
+ if {combatInfinite::%uuid of victim%} is not set:
+  set {combat::%uuid of victim%} to now + {@combatTime}
+  send action bar "&c&lEM COMBATE! &e20 &c⚔" to victim
+ if {combatInfinite::%uuid of attacker%} is not set:
+  set {combat::%uuid of attacker%} to now + {@combatTime}
+  send action bar "&c&lEM COMBATE! &e20 &c⚔" to attacker
+ #desativa fly dos vips durante combate =------------------------------- VIPS
+ if gamemode of attacker is survival:
+  if flight mode of attacker is true:
+   set flight mode of attacker to false
+ if gamemode of victim is survival:  
+  if flight mode of victim is true:
+   set flight mode of victim to false
+ #guarda pet dos vips durante combate =------------------------------- VIPS
+ set {_petstatusvictim} to value of placeholder "mypet_status" for victim 
+ if {_petstatusvictim} is "Here":
+  execute console command "petsendaway %victim%"
+  send "&bSeu pet foi guardado por entrar em combate!" to victim
+ set {_petstatusshooter} to value of placeholder "mypet_status" for attacker
+ if {_petstatusshooter} is "Here":
+  execute console command "petsendaway %attacker%"
+  send "&bSeu pet foi guardado por entrar em combate!" to attacker
+
+on projectile hit:
+ # Verifica se o local do dano é protegido contra pvp. (worldguard)
+ set {_regionPVP} to value of placeholder "worldguard_region_flags" for victim
+ if {_regionPVP} contains "pvp=DENY":
+  stop
+ # -------------------------------
+ if victim is player:
+  set {_isCombatWorld} to false
+  loop {CombatLogWorld::*}: #Checa se o mundo é combatlog
+   if "%world of victim%" is loop-value:
+    set {_isCombatWorld} to true
+  if {_isCombatWorld} is false:
+   stop
+   
+ #Se estiver em evento pilar, não ativa combatlog -------------------------------- eventopilar.sk
+ if {eventopilar::players::%uuid of victim%::ingame} is set:
+  stop
+ if {eventopilar::players::%uuid of shooter%::ingame} is set:
+  stop
+
+ if shooter has permission {@bypassPermission}:
+  stop
+ if victim is player:
+  if victim has permission {@bypassPermission}:
+   stop
+ if gamemode of shooter is not survival:
+  stop
+ if victim is player:
+  if gamemode of victim is not survival:
+   stop
+
+ #Combat log EnderPearl durante combate (a enderpearl reseta o combatlog)
+ if projectile is ender pearl:
+  if shooter is player:
+   if {combat::%uuid of shooter%} is set:
+    if {combatInfinite::%uuid of victim%} is not set:
+     send action bar "&c&lEM COMBATE! &e20 &c⚔" to shooter
+     set {combat::%uuid of shooter%} to now + {@combatTime}
+  
+ #Projéteis ativam combatlog (exclui a vara de pesca)   
+ else if projectile is not fish hook:
+  if shooter is player:
+   if victim is player:
+    if {combatInfinite::%uuid of victim%} is not set:
+     set {combat::%uuid of victim%} to now + {@combatTime}
+     send action bar "&c&lEM COMBATE! &e20 &c⚔" to victim
+    if {combatInfinite::%uuid of shooter%} is not set:
+     set {combat::%uuid of shooter%} to now + {@combatTime}
+     send action bar "&c&lEM COMBATE! &e20 &c⚔" to shooter
+    #desativa fly dos vips durante combate =------------------------------- VIPS
+    if gamemode of shooter is survival:
+     if flight mode of shooter is true:
+      set flight mode of shooter to false
+    if gamemode of victim is survival:  
+     if flight mode of victim is true:
+      set flight mode of victim to false
+    #guarda pet dos vips durante combate =------------------------------- VIPS
+    set {_petstatusvictim} to value of placeholder "mypet_status" for victim
+    if {_petstatusvictim} is "Here":
+     execute console command "petsendaway %victim%"
+     send "&bSeu pet foi guardado por entrar em combate!" to victim
+    set {_petstatusshooter} to value of placeholder "mypet_status" for shooter
+    if {_petstatusshooter} is "Here":
+     execute console command "petsendaway %shooter%"
+     send "&bSeu pet foi guardado por entrar em combate!" to shooter
+ 
+# -------------------------------
+# Mostrar Action Bar
+# -------------------------------
+every 1 second:
+ loop all players:
+  if {combat::%uuid of loop-player%} is set:
+   set {_secs} to seconds of time until {combat::%uuid of loop-player%}
+   if {_secs} > 0:
+    send action bar "&c&lEM COMBATE! &e%{_secs}% &c⚔" to loop-player
+   else:
+    delete {combat::%uuid of loop-player%}
+    send action bar "&aVocê saiu do combate &a⚔" to loop-player
+
+every 10 seconds:
+ loop all players:
+  if {combatInfinite::%uuid of loop-player%} is set:
+   send action bar "&c&lEM COMBATE! &c⚔" to loop-player
+
+# -------------------------------
+# Bloquear comandos durante combate
+# -------------------------------
+on command:
+ if player has permission {@bypassPermission}:
+  stop
+ #### COMANDOS BLOQUEADOS EM COMBATE ####
+ set {_blocked::1} to "home"
+ set {_blocked::2} to "sethome"
+ set {_blocked::3} to "ec"
+ set {_blocked::4} to "echest"
+ set {_blocked::5} to "enderchest"
+ set {_blocked::6} to "depositar"
+ set {_blocked::7} to "warp"
+ set {_blocked::8} to "petcall"
+ set {_blocked::9} to "petinventory"
+ set {_blocked::10} to "clan home"
+ set {_blocked::11} to "clan home set"
+ set {_blocked::12} to "tpaccept"
+ set {_blocked::13} to "fly"
+ set {_blocked::14} to "repair"
+ set {_blocked::15} to "tpa"
+
+ if {combat::%uuid of player%} is set:
+  loop {_blocked::*}:
+   if command is {_blocked::%loop-index%}:
+    cancel event
+    send "&cVocê não pode usar esse comando em combate!"
+    stop
+
+ if {combatInfinite::%uuid of player%} is set:
+  loop {_blocked::*}:
+   if command is {_blocked::%loop-index%}:
+    cancel event
+    send "&cVocê não pode usar esse comando em combate!"
+    stop
+
+# -------------------------------
+# Detectar kick
+# -------------------------------
+#on kick:
+ #set {wasKicked.%uuid of player%} to true
+
+on quit:
+ # -------------------------------
+ # Detectar timeout / desconexão
+ # -------------------------------
+ #if event-quit reason contains "Timed out":
+  #set {wasTimeout.%uuid of player%} to true
+
+ #if event-quit reason contains "Disconnected":
+  #set {wasTimeout.%uuid of player%} to true
+
+ # -------------------------------
+ # Excessão de combate
+ # -------------------------------
+ if player has permission {@bypassPermission}:
+  stop
+ #if {wasKicked::%uuid of player%} is true:
+  #execute console command "channel announce global %{_p}% &l&6Foi kickado durante o combate!"
+  #delete {wasKicked::%uuid of player%}
+  #stop
+ #if {wasTimeout::%uuid of player%} is true:
+  #execute console command "channel announce global %{_p}% &l&6Perdeu a conexão durante o combate!"
+  #delete {wasTimeout::%uuid of player%}
+  #stop
+
+ # Punir o player
+ if {combat::%uuid of player%} is set:
+  delete {combat::%uuid of player%}
+  Punicoes(player, world of player)
+
+ if {combatInfinite::%uuid of player%} is set:
+  delete {combatInfinite::%uuid of player%}
+  Punicoes(player, world of player)
+# -------------------------------
+# Limpar flags ao entrar
+# -------------------------------
+on join:
+ delete {combat::%uuid of player%}
+ delete {combatInfinite::%uuid of player%}
+ delete {wasKicked::%uuid of player%} 
+ delete {wasTimeout::%uuid of player%}
+
+command /combatlog <player>:
+ permission: op
+ trigger:
+  set {combat::%uuid of arg-1%} to now + {@combatTime}
+
+command /combatloginfinite <player> <boolean>:
+ permission: op
+ trigger:
+  if arg-2 is true:
+   set {combatInfinite::%uuid of arg-1%} to true
+   send action bar "&c&lEM COMBATE! &c⚔" to arg-1
+  else if arg-2 is false:
+   delete {combatInfinite::%uuid of arg-1%}
+   send action bar "&aVocê saiu do combate &a⚔" to arg-1
+
+on tab complete of "/combatloginfinite":
+ set tab completions for position 2 to "true" and "false"
+

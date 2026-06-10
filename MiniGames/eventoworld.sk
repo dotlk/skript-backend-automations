@@ -1,0 +1,888 @@
+##################
+#-EVENTO WORLD
+#-by lkaerys
+##################
+
+
+import:
+ org.bukkit.entity.Player
+ 
+##################
+options:
+ EventoMundoPrefix: "&9&l[Evento Mundial]&r"
+
+
+function DentroWorldEvento(worldp: world):: boolean:
+ if {_worldp} is world "%{eventomundo::World}%":
+  return true
+ return false
+ 
+#Fallback de world
+on player move:
+ if {eventomundo::World} is set:
+  if player has permission "tab.staff":
+   stop
+  
+  set {_pworld} to world of player
+
+  #player de dentro sair do world
+  if DentroWorldEvento({_pworld}) is not true: 
+   set {_uuid} to uuid of player
+   if {eventomundo::players::%{_uuid}%::ingame} is true:
+
+    send actionbar "&cvocê não pode fugir do evento!" to player
+    kill vehicle of player
+    cancel event
+   
+    #Verificar ultrapassagem
+    wait 1 tick
+    if DentroWorldEvento({_pworld}) is false:
+     set {_safe} to {eventomundo::Spawn}
+     teleport player to {_safe}
+     send "%{@EventoMundoPrefix}% &8Player &f%player% &8falhou no teleporte e foi &ateleportado novamente" to console
+    
+  #player de fora entrar na arena
+  else:
+   set {_uuid} to uuid of player
+   if {eventomundo::players::%{_uuid}%::ingame} is not true:
+
+    send actionbar "&cOpa! você nao deveria estar aqui." to player
+    kill vehicle of player
+    cancel event
+   
+    #Verificar ultrapassagem
+    wait 1 tick
+    if DentroWorldEvento({_pworld}) is true:
+     #tenta teleportar para local salvo, se nao, spawn do mundo.
+     clear {_safe}
+     if {eventomundo::players::%{_uuid}%::playersaveloc} is set:
+      set {_safe} to {eventomundo::players::%{_uuid}%::playersaveloc}
+     else:
+      set {_safe} to spawn of world "world"
+
+     teleport player to {_safe}
+     send "%{@EventoMundoPrefix}% &8Player &f%player% &8falhou no teleporte e foi &ateleportado novamente" to console
+     
+
+import:
+ com.nickuc.login.api.event.bukkit.auth.AuthenticateEvent
+ com.nickuc.login.api.event.bukkit.auth.SessionLoginEvent
+
+#Eventos
+on AuthenticateEvent:
+ set {_event} to event
+ set {_p} to {_event}.getPlayer()
+ LoginPlayer({_p})
+
+on SessionLoginEvent:
+ set {_event} to event
+ set {_p} to {_event}.getPlayer()
+ LoginPlayer({_p})
+
+function LoginPlayer(p: player):
+ set {_uuid} to uuid of {_p}
+ #Restaura player caso volte enquanto o evento ainda estiver em andamento.
+ if {eventomundo::players::%{_uuid}%::issaved} is set:
+  wait 5 ticks
+  #Forçar saida do mundo - força processo de spawn do player, evitando bugs de teleporte e inventário (server side)
+  if chunk at spawn point of world "world" is not loaded:
+   load chunk at spawn point of world "world"
+  if world of {_p} is {eventomundo::World}:
+   teleport {_p} to spawn point of world "world"
+
+  RestauraPlayer({_p})
+  extinguish {_p}
+  send "%{@EventoMundoPrefix}% &8player &f%{_p}% &8foi &arestaurado." to console
+  #Remove isquit - flag
+  delete {eventomundo::players::%{_uuid}%::quit}
+
+
+ #Restaura player caso tenha voltado após o evento ter terminado.
+ if {eventomundoplayersbackup::%{_uuid}%::isbackup} is set:
+  wait 5 ticks
+  #Forçar saida do mundo - força processo de spawn do player, evitando bugs de teleporte e inventário (server side)
+  if chunk at spawn point of world "world" is not loaded:
+   load chunk at spawn point of world "world"
+  if world of {_p} is {eventomundo::World}:
+   teleport {_p} to spawn point of world "world"
+
+  RestauraBackup({_p})
+  extinguish {_p}
+  send "%{@EventoMundoPrefix}% &8Player &f%{_p}% &8foi &arestaurado &8a partir de &d&lbackup." to console
+
+  #deletar backup do player
+  wait 5 ticks
+  delete {eventomundoplayersbackup::%{_uuid}%::*}
+
+#Saída de player do jogo
+on quit:
+ set {_uuid} to uuid of player
+ if {eventomundo::players::%{_uuid}%::ingame} is true:
+  if world of player is {eventomundo::World}:
+   set {eventomundo::players::%{_uuid}%::ingame} to false
+   set {eventomundo::players::%{_uuid}%::quit} to true
+
+  #contar players atuais do evento
+  set {_contador} to 0
+  loop indices of {eventomundo::players::*}:
+   set {_uuidcontador} to loop-value
+   if {eventomundo::players::%{_uuidcontador}%::ingame} is true:
+    add 1 to {_contador}
+
+  set {eventomundo::qtdplayers} to {_contador}
+
+  #Avisar Eliminação
+  loop all players:
+   if world of loop-player is {eventomundo::World}:
+    send "%{@EventoMundoPrefix}% &f%player% &6abandonou o jogo!" to loop-player
+    send "%{@EventoMundoPrefix}%  &6Restam &c(&f%{_contador}% &6player(s)&c)" to loop-player
+
+#Morte de player - lógica de eliminação
+on death of player:
+ if world of victim is {eventomundo::World}:
+  #lógica de eliminação
+  set {_uuid} to uuid of victim
+  if {eventomundo::players::%{_uuid}%::ingame} is true:
+   cancel event
+
+   #TOTEM
+   if victim's off hand is totem of undying:
+    stop
+   if victim's tool is totem of undying:
+    stop
+
+   #Morte fake - eliminação
+   drop all items of victim
+   set {eventomundo::players::%{_uuid}%::ingame} to false
+   play sound "block.anvil.land" with volume 2 and pitch 1.80 at location of victim
+   
+   wait 1 tick
+   set {eventomundo::pendingdeath::%{_uuid}%} to true
+
+   #contar players atuais do evento
+   set {_contador} to 0
+   loop indices of {eventomundo::players::*}:
+    set {_uuidcontador} to loop-value
+    if {eventomundo::players::%{_uuidcontador}%::ingame} is true:
+     add 1 to {_contador}
+  
+   set {eventomundo::qtdplayers} to {_contador}
+
+   #Avisar Eliminação
+   loop all players:
+    if world of loop-player is {eventomundo::World}:
+     set {_killer} to attacker
+     if attacker is a projectile:
+      set {_killer} to shooter
+
+     if {_killer} is a player:
+      send "%{@EventoMundoPrefix}% &f%victim% &cfoi eliminado por &f%attacker%! " to loop-player
+      send "%{@EventoMundoPrefix}%  &6Restam &c(&f%{_contador}% &6player(s)&c)" to loop-player
+     else:
+      send "%{@EventoMundoPrefix}% &f%victim% &cfoi eliminado! " to loop-player
+      send "%{@EventoMundoPrefix}%  &6Restam &c(&f%{_contador}% &6player(s)&c)" to loop-player
+
+   #Avisar o player
+   send title "&cVocê foi eliminado!" to victim
+
+ wait 1 tick
+ #== STATE MACHINE ## EXECUÇÃO DE EVENTOS
+ # Lógica de eliminação
+ loop indices of {eventomundo::pendingdeath::*}:
+
+  set {_uuid} to loop-value
+  set {_p} to {_uuid} parsed as offline player
+  send {_p} to console
+
+  #Forçar saida do mundo - força processo de spawn do player, evitando bugs de teleporte e inventário (server side)
+  if world of {_p} is {eventomundo::World}:
+   if chunk at spawn point of world "world" is not loaded:
+    load chunk at spawn point of world "world"
+   teleport {_p} to spawn point of world "world"
+   
+   close {_p}'s inventory # Evita drag de cursor item   
+   RestauraPlayer({_p})
+
+   set health of {_p} to max health of {_p}
+   extinguish {_p}
+
+   #remove pendingdeath - limpa flag
+   delete {eventomundo::pendingdeath::%{_uuid}%}
+
+
+#Dano de player - lógica de pvp e lógica de eliminação
+on damage of player:
+ if world of victim is {eventomundo::World}:
+  #lógica de pvp state
+  if {eventomundo::PVP} is false:
+   set {_killer} to attacker
+   if attacker is a projectile:
+    set {_killer} to shooter
+
+   set {_uuidk} to uuid of {_killer}
+   set {_uuidv} to uuid of victim
+   if {eventomundo::players::%{_uuidk}%::ingame} is not set:
+    stop
+   if {eventomundo::players::%{_uuidv}%::ingame} is not set:
+    stop
+    
+   cancel event
+
+#Ignorar pérolas lançadas por players eliminados
+on projectile hit:
+ if world of projectile is {eventomundo::World}:
+  if projectile is ender pearl:
+   if shooter is player:
+    set {_uuid} to uuid of shooter
+    if {eventomundo::players::%{_uuid}%::ingame} is false:
+     cancel event
+
+
+
+
+
+
+
+#-- FUNÇÕES ##########################################################################################
+#Função para salvar player
+function SalvarPlayer(uuid: string, p: player):
+ #confirmação de save - flag
+ set {eventomundo::players::%{_uuid}%::issaved} to true
+
+ #Salva localização
+ set {eventomundo::players::%{_uuid}%::playersaveloc} to location of {_p}
+    
+ #Salva inventário, xp e efeitos
+ loop 36 times:
+  set {_slot} to loop-number -1
+  set {eventomundo::players::%{_uuid}%::playersaveinv::%{_slot}%} to slot {_slot} of {_p}'s inventory
+
+ set {eventomundo::players::%{_uuid}%::playersaveinv::helmet} to helmet of {_p}
+ set {eventomundo::players::%{_uuid}%::playersaveinv::chestplate} to chestplate of {_p}
+ set {eventomundo::players::%{_uuid}%::playersaveinv::leggings} to leggings of {_p}
+ set {eventomundo::players::%{_uuid}%::playersaveinv::boots} to boots of {_p}
+ set {eventomundo::players::%{_uuid}%::playersaveinv::offhand} to off hand of {_p}
+    
+ set {eventomundo::players::%{_uuid}%::playersaveexp::level} to level of {_p}
+ set {eventomundo::players::%{_uuid}%::playersaveexp::exp} to experience of {_p}
+ loop potion effects of {_p}:
+  add loop-value to {eventomundo::players::%{_uuid}%::playersaveeffects::*} 
+
+
+#Função para restaurar player
+function RestauraPlayer(p: player):
+ set {_uuid} to uuid of {_p}
+
+ #Limpar Flags do player
+ delete {eventomundo::players::%{_uuid}%::issaved}
+
+ #Restaurar o player
+ #Inventário
+ clear {_p}'s inventory
+ loop {eventomundo::players::%{_uuid}%::playersaveinv::*}:
+  set {_slot} to loop-index parsed as number
+  set slot {_slot} of {_p} to loop-value
+ 
+ set helmet of {_p} to {eventomundo::players::%{_uuid}%::playersaveinv::helmet}
+ set chestplate of {_p} to {eventomundo::players::%{_uuid}%::playersaveinv::chestplate}
+ set leggings of {_p} to {eventomundo::players::%{_uuid}%::playersaveinv::leggings}
+ set boots of {_p} to {eventomundo::players::%{_uuid}%::playersaveinv::boots}
+ set off hand of {_p} to {eventomundo::players::%{_uuid}%::playersaveinv::offhand}
+
+ #Nível e exp
+ set level of {_p} to {eventomundo::players::%{_uuid}%::playersaveexp::level}
+ set experience of {_p} to {eventomundo::players::%{_uuid}%::playersaveexp::exp}
+ #Efeitos
+ clear potion effects of {_p}
+ loop {eventomundo::players::%{_uuid}%::playersaveeffects::*}:
+  apply loop-value to {_p}
+ #Gamemode survival
+ set gamemode of {_p} to survival
+ 
+  #Teleporta player para localização salva
+ if {eventomundo::players::%{_uuid}%::playersaveloc} is set:
+  if chunk at {eventomundo::players::%{_uuid}%::playersaveloc} is not loaded:
+   load chunk at {eventomundo::players::%{_uuid}%::playersaveloc}
+  wait 5 ticks
+  teleport {_p} to {eventomundo::players::%{_uuid}%::playersaveloc}
+ else:
+  if chunk at spawn point of world "world" is not loaded:
+   load chunk at spawn point of world "world"
+  wait 5 ticks
+  teleport {_p} to spawn point of world "world"
+
+# BACKUP -------- SALVAR PLAYER
+function SalvaBackup(uuid: string):
+ #Confirmação de backup - flag
+ set {eventomundoplayersbackup::%{_uuid}%::isbackup} to true
+ #Salva localização
+ set {eventomundoplayersbackup::%{_uuid}%::playersaveloc} to {eventomundo::players::%{_uuid}%::playersaveloc}
+  
+ #Salva inventário, xp e efeitos
+ loop 36 times:
+  set {_slot} to loop-number - 1
+  set {eventomundoplayersbackup::%{_uuid}%::playersaveinv::%{_slot}%} to {eventomundo::players::%{_uuid}%::playersaveinv::%{_slot}%}
+
+  set {eventomundoplayersbackup::%{_uuid}%::playersaveinv::helmet} to {eventomundo::players::%{_uuid}%::playersaveinv::helmet}
+  set {eventomundoplayersbackup::%{_uuid}%::playersaveinv::chestplate} to {eventomundo::players::%{_uuid}%::playersaveinv::chestplate}
+  set {eventomundoplayersbackup::%{_uuid}%::playersaveinv::leggings} to {eventomundo::players::%{_uuid}%::playersaveinv::leggings}
+  set {eventomundoplayersbackup::%{_uuid}%::playersaveinv::boots} to {eventomundo::players::%{_uuid}%::playersaveinv::boots}
+  set {eventomundoplayersbackup::%{_uuid}%::playersaveinv::offhand} to {eventomundo::players::%{_uuid}%::playersaveinv::offhand}
+
+  set {eventomundoplayersbackup::%{_uuid}%::playersaveexp::level} to {eventomundo::players::%{_uuid}%::playersaveexp::level}
+  set {eventomundoplayersbackup::%{_uuid}%::playersaveexp::exp} to {eventomundo::players::%{_uuid}%::playersaveexp::exp}
+ loop {eventomundo::players::%{_uuid}%::playersaveeffects::*}:
+  add loop-value to {eventomundoplayersbackup::%{_uuid}%::playersaveeffects::*}
+
+# BACKUP -------- RESTAURAR PLAYER
+function RestauraBackup(p: player):
+ set {_uuid} to uuid of {_p}
+ #teleporta player para localização salva
+ if {eventomundoplayersbackup::%{_uuid}%::playersaveloc} is set:
+  if chunk at {eventomundoplayersbackup::%{_uuid}%::playersaveloc} is not loaded:
+   load chunk at {eventomundoplayersbackup::%{_uuid}%::playersaveloc}
+  wait 5 ticks
+  teleport {_p} to {eventomundoplayersbackup::%{_uuid}%::playersaveloc}
+ else:
+  if chunk at spawn point of world "world" is not loaded:
+   load chunk at spawn point of world "world"
+  wait 5 ticks
+  teleport {_p} to spawn point of world "world"
+
+ #Restaurar o player
+ #Inventário
+ clear {_p}'s inventory
+ loop {eventomundoplayersbackup::%{_uuid}%::playersaveinv::*}:
+  set {_slot} to loop-index parsed as number
+  set slot {_slot} of {_p} to loop-value
+
+ set helmet of {_p} to {eventomundoplayersbackup::%{_uuid}%::playersaveinv::helmet}
+ set chestplate of {_p} to {eventomundoplayersbackup::%{_uuid}%::playersaveinv::chestplate}
+ set leggings of {_p} to {eventomundoplayersbackup::%{_uuid}%::playersaveinv::leggings}
+ set boots of {_p} to {eventomundoplayersbackup::%{_uuid}%::playersaveinv::boots}
+ set off hand of {_p} to {eventomundoplayersbackup::%{_uuid}%::playersaveinv::offhand}
+
+ #Nível e exp
+ set level of {_p} to {eventomundoplayersbackup::%{_uuid}%::playersaveexp::level}
+ set experience of {_p} to {eventomundoplayersbackup::%{_uuid}%::playersaveexp::exp}
+ #Efeitos
+ clear potion effects of {_p}
+ loop {eventomundoplayersbackup::%{_uuid}%::playersaveeffects::*}:
+  apply loop-value to {_p} 
+ #Gamemode survival
+ set gamemode of {_p} to survival
+
+ #Limpar Flags do player
+ delete {eventomundoplayersbackup::%{_uuid}%::isbackup}
+
+#####################################
+#         evento
+#####################################
+
+#Iniciar evento
+command /Evento [<text>] [<text>]:
+ trigger:
+  set {_uuid} to uuid of player
+  #Entrar no Minigame
+  if arg-1 is not set:
+   if {eventomundo::players::%{_uuid}%::ingame} is true:
+    send "&cVocê já entrou no jogo!"
+    stop
+   if {eventomundo::players::%{_uuid}%::ingame} is false:
+    send "&cVocê foi eliminado e não pode retornar!"
+    stop
+
+   if {eventomundo::State} is "open":
+    SalvarPlayer({_uuid}, player)
+    set {eventomundo::players::%{_uuid}%::ingame} to true
+    wait 2 tick
+
+    #PRESETS
+    clear player's inventory
+    clear level of player
+    clear experience of player
+    clear potion effects of player
+    set health of player to max health of player
+    set food of player to 20
+    give 10 of bread to player
+    give spyglass to player
+
+    #desativa fly dos vips durante o evento =------------------------------- VIPS
+    if gamemode of player is survival:
+     if flight mode of player is true:
+      set flight mode of player to false
+    #guarda pet dos vips durante o evento =------------------------------- VIPS
+    set {_petstatusvictim} to value of placeholder "mypet_status" for player
+    if {_petstatusvictim} is "Here":
+     execute console command "petsendaway %player%"
+     send "&bSeu pet foi guardado!" to player
+     send "&bvocê poderá chamá-lo ao &6final do evento!" to player
+    
+    teleport player to {eventomundo::Spawn}
+    
+    #contar players atuais do evento
+    set {_contador} to 0
+    loop indices of {eventomundo::players::*}:
+     set {_uuid} to loop-value
+     if {eventomundo::players::%{_uuid}%::ingame} is true:
+      add 1 to {_contador}
+    
+    set {eventomundo::qtdplayers} to {_contador}
+
+    #Avisar entrada de players
+    loop all players:
+     if world of loop-player is {eventomundo::World}:
+      send title "" to loop-player
+      send subtitle "&f%player% &aentrou no jogo! &c(&f%{_contador}% &6player(s)&c) " to loop-player
+
+   else if {eventomundo::State} is "closed":
+    send "&cA entrada para este evento está fechada." to player
+
+   else:
+    send "&cNão há evento em andamento." to player
+
+  # Comandos admnistrativos ############################################################
+  if arg-1 is "setspawn": #-Define spawn do evento
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+    
+   if world of player is "world":
+    send "&%{@EventoMundoPrefix}% cVocê não pode definir o &9evento mundial &cno mundo normal!" to player
+    stop
+   if world of player is "world_nether":
+    send "&%{@EventoMundoPrefix}% cVocê não pode definir o &9evento mundial &cno nether!" to player
+    stop
+   if world of player is "world_the_end":
+    send "&%{@EventoMundoPrefix}% cVocê não pode definir o &9evento mundial &cno end!" to player
+    stop
+    
+   #setting presets
+   if {eventomundo::Spawn} is not set:
+    set {eventomundo::Spawn} to location of player
+    set {eventomundo::Border::Center} to location of player
+    set {eventomundo::World} to world of player
+    set {eventomundo::PVP} to false
+    set {eventomundo::State} to "waiting"
+    execute console command "execute in %{eventomundo::World}% run gamerule locatorBar false"
+    execute console command "execute in %{eventomundo::World}% run gamerule doMobSpawning false"
+    set {_x} to floor(x-coordinate of location of player)
+    set {_y} to floor(y-coordinate of location of player)
+    set {_z} to floor(z-coordinate of location of player)
+    execute console command "mvsetspawn %{eventomundo::World}%:%{_x}%,%{_y}%,%{_z}% --unsafe"
+    execute console command "execute in %{eventomundo::World}% run worldborder center %{_x}% %{_z}%"
+    execute console command "strings reload"
+
+
+
+    send "%{@EventoMundoPrefix}% &9Spawn &adefinido!" to player
+    send "&8&m                             " to player
+    send "&9        PRESETS                " to player
+    send "&8&m                             " to player
+    send "&cPVP&7: &r%{eventomundo::PVP}%" to player
+    send "&8&m                             " to player
+    send "&a        CHANGES                " to player
+    send "" to player
+    send "&aBuild 1.6&7: &radicionada opção de teleportar todos os players &a/evento tp"
+    send "&eBuild 1.5&7: &rcorreção de bugs"
+    send "&eBuild 1.4&7: &radicionada opção de subir lava &a/evento lava <altura>"
+   else:
+    set {eventomundo::Spawn} to location of player
+    send "%{@EventoMundoPrefix}% &9O spawn foi &aredefinido&9!" to player
+
+
+  if arg-1 is "abrir": #-Abre entrada do evento
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+   if {eventomundo::Spawn} is not set:
+    send "%{@EventoMundoPrefix}% &cO spawn não foi definido!" to player
+    send "                         &6/evento setspawn" to player 
+    stop
+
+   if {eventomundo::State} is "waiting":
+    AvisarEntradaAberta()
+    send "%{@EventoMundoPrefix}% &aEntrada aberta!" to player
+    send "%{@EventoMundoPrefix}% &aEntrada aberta!" to console
+    set {eventomundo::State} to "open"
+   else if {eventomundo::State} is "closed":
+    AvisarEntradaAberta()
+    set {eventomundo::State} to "open"
+    send "%{@EventoMundoPrefix}% &aEntrada aberta novamente." to player
+   else:
+    send "%{@EventoMundoPrefix}% &cA entrada já está aberta!" to player
+
+  if arg-1 is "fechar": #-Fecha entrada do evento
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+
+   if {eventomundo::State} is "open":
+    AvisarEntradaFechada()
+    send "%{@EventoMundoPrefix}% &cEntrada fechada!" to player
+    send "%{@EventoMundoPrefix}% &cEntrada fechada!" to console
+    set {eventomundo::State} to "closed"
+   else:
+    send "%{@EventoMundoPrefix}% &cA entrada já está fechada!" to player
+
+  if arg-1 is "end": #-Termina evento
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+
+   if {eventomundo::State} is set:
+    loop all players:
+     if world of loop-player is {eventomundo::World}: 
+      #Avisa players do encerramento do evento
+      send title "&cEvento encerrado" to loop-player
+      #Restaura player caso o evento termine enquanto ele estiver dentro do mundo do evento.
+      set {_uuid} to uuid of loop-player
+
+      if {eventomundo::players::%{_uuid}%::issaved} is set:  
+       close {_p}'s inventory # Evita drag de cursor item        
+       RestauraPlayer(loop-player)
+     
+    #Salva Backup dos dados dos players que saíram do jogo
+    loop indices of {eventomundo::players::*}:
+     set {_uuid} to loop-value
+
+     if {eventomundo::players::%{_uuid}%::quit} is true:
+      set {_p} to {_uuid} parsed as offline player
+
+      SalvaBackup({_uuid})
+      send "%{@EventoMundoPrefix}% &cPlayer &f%{_p}% &csaiu do jogo. &dBackup dos dados &asalvo." to console
+    
+    #Limpar flags gerais
+    wait 5 ticks
+    delete {eventomundo::*}
+
+    send "%{@EventoMundoPrefix}% &cEvento terminado" to player
+    send "%{@EventoMundoPrefix}% &cEvento terminado" to console
+   else:
+    send "%{@EventoMundoPrefix}% &cNão há evento em andamento" to player
+  
+  if arg-1 is "borda":
+   set {_raio} to arg-2 parsed as number
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+   if {_raio} is not set:
+    send "&cUse: /evento borda <raio>" to player
+    stop
+   if {eventomundo::Spawn} is not set:
+    send "%{@EventoMundoPrefix}% &cO spawn não foi definido!" to player
+    send "                         &6/evento setspawn" to player 
+    stop
+
+   execute console command "execute in %{eventomundo::World}% run worldborder set %{_raio}%"
+
+   if {_raio} > 100:
+    delete {eventomundo::Border::Radius}
+   else:
+    set {eventomundo::Border::Radius} to {_raio} / 2
+
+  if arg-1 is "pvp":
+   set {_escolhapvp} to arg-2 parsed as boolean
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+   if {eventomundo::Spawn} is not set:
+    send "%{@EventoMundoPrefix}% &cO spawn não foi definido!" to player
+    send "                         &6/evento setspawn" to player 
+    stop
+   if {_escolhapvp} is not set:
+    send "&cUse: /evento pvp <true/false>" to player
+    stop
+
+   if {_escolhapvp} is true:
+    set {eventomundo::PVP} to true
+    send "%{@EventoMundoPrefix}% &6PvP &cativado!" to player
+    #Avisar players do evento sobre ativação do PvP
+    loop all players:
+     if world of loop-player is {eventomundo::World}:
+      send title "" to loop-player
+      send subtitle "&6PvP &cON!" to loop-player
+   else:
+    set {eventomundo::PVP} to false
+    send "%{@EventoMundoPrefix}% &6PvP &adesativado!" to player
+    #Avisar players do evento sobre desativação do PvP
+    loop all players:
+     if world of loop-player is {eventomundo::World}:
+      send title "" to loop-player
+      send subtitle "&6PvP &aOFF!" to loop-player
+  
+  if arg-1 is "reviver":
+   set {_p} to arg-2 parsed as offline player
+   set {_uuid} to uuid of {_p}
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+   if {_p} is not set:
+    send "&cUse: /evento reviver <player>" to player
+    stop
+
+   if {eventomundo::players::%{_uuid}%::ingame} is false:
+    delete {eventomundo::players::%{_uuid}%::ingame}
+    send "%{@EventoMundoPrefix}% &aPlayer &f%{_p}% &arevivido!" to player
+    send "%{@EventoMundoPrefix}% &aVocê foi revivido! Digite &6/evento" to {_p}
+   else:
+    send "%{@EventoMundoPrefix}% &cEste player não está eliminado!" to player
+  
+  if arg-1 is "force":
+   set {_p} to arg-2 parsed as offline player
+   set {_uuid} to uuid of {_p}
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+   if {_p} is not set:
+    send "&cUse: /evento reviverforce <player>" to player
+    stop
+   
+   SalvarPlayer({_uuid}, {_p})
+   set {eventomundo::players::%{_uuid}%::ingame} to true
+   wait 2 tick
+
+   #PRESETS
+   clear {_p}'s inventory
+   clear level of {_p}
+   clear experience of {_p}
+   clear potion effects of {_p}
+   set health of player to max health of {_p}
+   set food of {_p} to 20
+
+   #desativa fly dos vips durante o evento =------------------------------- VIPS
+   if gamemode of {_p} is survival:
+    if flight mode of {_p} is true:
+     set flight mode of {_p} to false
+   #guarda pet dos vips durante o evento =------------------------------- VIPS
+   set {_petstatusvictim} to value of placeholder "mypet_status" for {_p}
+   if {_petstatusvictim} is "Here":
+    execute console command "petsendaway %{_p}%"
+    send "&bSeu pet foi guardado!" to {_p}
+    send "&bvocê poderá chamá-lo ao &6final do evento!" to {_p}
+
+   teleport {_p} to {eventomundo::Spawn}
+   #contar players atuais do evento
+   set {_contador} to 0
+   loop indices of {eventomundo::players::*}:
+    set {_uuidcontador} to loop-value
+    if {eventomundo::players::%{_uuidcontador}%::ingame} is true:
+     add 1 to {_contador}
+
+   set {eventomundo::qtdplayers} to {_contador}
+   
+  if arg-1 is "glowing":
+   set {_escolhaglow} to arg-2 parsed as boolean
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+   if {_escolhaglow} is not set:
+    send "&cUse: /evento glowing <true/false>" to player
+    stop
+
+   if {_escolhaglow} is true:
+    loop indices of {eventomundo::players::*}:
+     set {_uuid} to loop-value
+     if {eventomundo::players::%{_uuid}%::ingame} is true:
+      set {_p} to {_uuid} parsed as player    
+      apply glowing to {_p} for 999999 seconds
+    #Avisar players do evento sobre ativação do efeito glow
+    loop all players:
+     if world of loop-player is {eventomundo::World}:
+      send actionbar "&aGlow &cON!" to loop-player
+   else:
+    loop indices of {eventomundo::players::*}:
+     set {_uuid} to loop-value
+     if {eventomundo::players::%{_uuid}%::ingame} is true:
+      set {_p} to {_uuid} parsed as player    
+      remove glowing from {_p}
+    #Avisar players do evento sobre desativação do efeito glow
+    loop all players:
+     if world of loop-player is {eventomundo::World}:
+      send actionbar "&aGlow &aOFF!" to loop-player
+
+  if arg-1 is "lava":
+   set {_altura} to arg-2 parsed as number
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+   if {eventomundo::Border::Radius} is not set:
+    send "&cDefina a borda antes de usar esta opção!" to player
+    send "&cO limite do raio para usar esta opção é &6100" to player
+    send "&6Use: /evento borda <raio>" to player
+    stop
+   if {_altura} is not set:
+    send "&cUse: /evento lava <altura>" to player
+    stop
+   
+   if {eventomundo::lavaY} is not set:
+    set {eventomundo::lavaY} to (y-coordinate of {eventomundo::Border::Center}) - 15
+    
+   else if {_altura} > 6:  
+    send "&cO limite pra adicionar lava é 6! mais que isso pode causar lag!" to player
+    stop
+   else if {_altura} > 0:
+    loop {_altura} times:
+     set {_pos1} to location((x-coordinate of {eventomundo::Border::Center}) + {eventomundo::Border::Radius}, {eventomundo::lavaY}, (z-coordinate of {eventomundo::Border::Center}) + {eventomundo::Border::Radius}, {eventomundo::World})
+     set {_pos2} to location((x-coordinate of {eventomundo::Border::Center}) - {eventomundo::Border::Radius}, {eventomundo::lavaY}, (z-coordinate of {eventomundo::Border::Center}) - {eventomundo::Border::Radius}, {eventomundo::World})
+    
+     #World Edit Dependent
+     loop blocks within {_pos1} and {_pos2}:
+      if loop-block is air:
+       set loop-block to lava
+      if loop-block is water:
+       set loop-block to lava
+      if "%loop-block%" contains "Sign":
+       set loop-block to lava
+     
+     add 1 to {eventomundo::lavaY}
+
+    #Avisa todos os players
+    loop all players:
+     if world of loop-player is {eventomundo::World}:
+      send action bar "&6Lava &csubiu &6até a camada &f%floor({eventomundo::lavaY})% " to loop-player
+
+   else if {_altura} < -100:  
+    send "&cO limite pra retirar lava é -100! mais que isso pode crashar o servidor!" to player
+    stop
+   else: 
+    loop abs({_altura}) times:
+     remove 1 from {eventomundo::lavaY}
+     set {_pos1} to location((x-coordinate of {eventomundo::Border::Center}) + {eventomundo::Border::Radius} + 2, {eventomundo::lavaY}, (z-coordinate of {eventomundo::Border::Center}) + {eventomundo::Border::Radius} + 2, {eventomundo::World})
+     set {_pos2} to location((x-coordinate of {eventomundo::Border::Center}) - {eventomundo::Border::Radius} - 2, {eventomundo::lavaY}, (z-coordinate of {eventomundo::Border::Center}) - {eventomundo::Border::Radius} - 2, {eventomundo::World})
+    
+     #World Edit dependent
+     loop blocks within {_pos1} and {_pos2}:
+      if loop-block is lava:
+       set loop-block to air
+
+    #Avisa todos os players
+    loop all players:
+     if world of loop-player is {eventomundo::World}:
+      send action bar "&6Lava &alimpa &6até a camada &f%floor({eventomundo::lavaY})% " to loop-player
+
+  if arg-1 is "tp":
+   if world of player is not {eventomundo::World}:
+    send action bar "&cVocê não pode teleportar players para fora!"
+    stop
+
+   set {_count} to 0
+   loop indices of {eventomundo::players::*}:
+    set {_uuid} to loop-value
+    set {_p} to {_uuid} parsed as offline player
+    if {_p} is player:
+     continue loop
+
+    if {eventomundo::players::%{_uuid}%::ingame} is true:
+     teleport {_p} to player
+     add 1 to {_count}
+   
+   send action bar "&8Teleportou &a%{_count}% &8players até você"
+    
+
+
+on tab complete of "/Evento":
+ if player is op:
+  set tab completions for position 1 to "abrir" and "fechar" and "setspawn" and "end" and "borda" and "pvp" and "reviver" and "force" and "glowing" and "lava" and "tp"
+  set tab completions for position 2 to all players and "true" and "false"
+
+#Avisar players fora do evento sobre entrada
+function AvisarEntradaAberta():
+ loop all players:
+  if world of loop-player is not {eventomundo::World}: 
+   send "" to loop-player
+   send "&8&m                                       " to loop-player
+   send "       &a&lEVENTO MUNDIAL        " to loop-player
+   send "&8&m                                       " to loop-player
+   send "      &fEntradas &aABERTAS&f!    " to loop-player
+   send "   &fUse &6/evento &fpara entrar!  " to loop-player
+   send "" to loop-player
+
+function AvisarEntradaFechada():
+ loop all players:
+  if world of loop-player is not {eventomundo::World}: 
+   send "" to loop-player
+   send "&8&m                                       " to loop-player
+   send "       &a&lEVENTO MUNDIAL        " to loop-player
+   send "&8&m                                       " to loop-player
+   send "      &fEntradas &cFECHADAS&f!    " to loop-player
+   send "" to loop-player
+
+every 20 seconds:
+ if {eventomundo::State} is "open":
+  AvisarEntradaAberta()
+
+on command: 
+ if player has permission "tab.staff":
+  stop
+ #### COMANDOS BLOQUEADOS NO EVENTO ####
+ set {_blocked::1} to "home"
+ set {_blocked::2} to "sethome"
+ set {_blocked::3} to "ec"
+ set {_blocked::4} to "echest"
+ set {_blocked::5} to "enderchest"
+ set {_blocked::6} to "depositar"
+ set {_blocked::7} to "warp"
+ set {_blocked::8} to "petcall"
+ set {_blocked::9} to "petinventory"
+ set {_blocked::10} to "clan home"
+ set {_blocked::11} to "clan home set"
+ set {_blocked::12} to "tpaccept"
+ set {_blocked::13} to "fly"
+ set {_blocked::14} to "repair"
+ set {_blocked::15} to "tpa"
+ set {_blocked::16} to "warps"
+ set {_blocked::17} to "homes"
+ 
+ if {eventomundo::players::%uuid of player%::ingame} is true:
+  loop {_blocked::*}:
+   if command is {_blocked::%loop-index%}:
+    cancel event
+    send "&cVocê não pode usar esse comando neste evento!"
+    stop
+
+#Cria placeholder da quantidade de players vivos
+placeholderapi placeholder with the prefix "eventomundo":
+ if the identifier is "qtdplayers":
+  if {eventomundo::qtdplayers} is set: 
+   set the result to "%{eventomundo::qtdplayers}%"
+  else:
+   set the result to "0"
+
+command /Eventodebug <player>:
+ trigger:
+  set {_uuid} to uuid of arg-1
+  if {eventomundo::players::%{_uuid}%::ingame} is set:
+   send "&aINVENTÁRIO SALVO" to player
+   send {eventomundo::players::%{_uuid}%::playersaveinv::*} to player
+   send "&aDADOS EVENTO" to player
+   send "ingame: %{eventomundo::players::%{_uuid}%::ingame}%" to player
+   if {eventomundo::players::%{_uuid}%::issaved} is set:
+    send "issaved: %{eventomundo::players::%{_uuid}%::issaved}%" to player
+   else:
+    send "issaved: not set" to player
+   if {eventomundo::players::%{_uuid}%::quit} is set:
+    send "Quit: %{eventomundo::players::%{_uuid}%::quit}%" to player
+   else:
+    send "Quit: not set" to player
+   send "SaveLoc: %{eventomundo::players::%{_uuid}%::playersaveloc}%" to player
+  else:
+   send "&cPlayer não participou do evento ou não entrou no jogo." to player
+  send "MundoAtual: &6%world of arg-1%"
+  if {eventomundoplayersbackup::%{_uuid}%::isbackup} is set:
+   send "&aDADOS BACKUP" to player
+   send "isbackup: %{eventomundoplayersbackup::%{_uuid}%::isbackup}%" to player
+  else:
+   send "&aDADOS BACKUP" to player
+   send "&cPlayer não tem backup salvo." to player
+  send "&9player: &f%arg-1%" to player

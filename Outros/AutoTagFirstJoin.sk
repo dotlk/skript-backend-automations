@@ -1,0 +1,6 @@
+on first join:
+ execute console command "lp user %player% parent add betatester"
+ execute console command "lp user %player% parent switchprimarygroup betatester"
+ play sound "ui.toast.challenge_complete" for player
+ send "&dBem-vindo(a) ao servidor! como prêmiação por jogar nas primeiras versões do servidor, você adquiriu a tag %{TagsListPrefix::6}%!" to player
+ send "&ddigite &a/Menu &dpara gerenciar suas tags! DIVIRTA-SE!" to player

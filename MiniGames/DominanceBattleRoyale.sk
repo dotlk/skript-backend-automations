@@ -1,0 +1,448 @@
+#############
+#-Dominance BattleRoyale
+#-by lkaerys
+#############
+
+##################
+# LootKeys Actions
+##################
+#Funções
+#Verifica se as lootkeys são válidas
+function IsLootkeyFerro(i: item) :: boolean: 
+ if {_i} is cookie:
+  if custom model data of {_i} is 9001:
+   return true
+    
+ return false
+function IsLootkeyOuro(i: item) :: boolean: 
+ if {_i} is cookie:
+  if custom model data of {_i} is 9002:
+   return true
+
+ return false
+function IsLootkeyDiamante(i: item) :: boolean: 
+ if {_i} is cookie:
+  if custom model data of {_i} is 9003:
+   return true
+    
+ return false
+function IsLootkeyEsmeralda(i: item) :: boolean: 
+ if {_i} is cookie:
+  if custom model data of {_i} is 9004:
+   return true
+    
+ return false
+function IsLootkeyNetherite(i: item) :: boolean: 
+ if {_i} is cookie:
+  if custom model data of {_i} is 9005:
+   return true
+    
+ return false
+
+function RandomDropLootKey(rarityRDL: number, p: player):
+ set {_container::5} to block at location(-23,64,-47, world named "staff") #Netherite
+ set {_container::4} to block at location(-33,64,-44, world named "staff") #Esmeralda
+ set {_container::3} to block at location(-26,64,-47, world named "staff") #Diamante
+ set {_container::2} to block at location(-29,64,-47, world named "staff") #Ouro
+ set {_container::1} to block at location(-32,64,-47, world named "staff") #Ferro
+ 
+ #define a lista de items
+ clear {_items::*}
+ loop {_rarityRDL} times:
+  set {_ContainerAtual} to loop-number
+
+  loop all items in {_container::%{_ContainerAtual}%}:
+   if loop-value-2 is not air:
+    add loop-value-2 to {_items::*}
+    set {_index} to size of {_items::*}
+    #Define a raridade do item
+    if {_ContainerAtual} = 1:
+     set {_items::%{_index}%::particle} to "ferro"
+    if {_ContainerAtual} = 2:
+     set {_items::%{_index}%::particle} to "ouro"
+    if {_ContainerAtual} = 3:
+     set {_items::%{_index}%::particle} to "diamante"
+    if {_ContainerAtual} = 4:
+     set {_items::%{_index}%::particle} to "esmeralda"
+    if {_ContainerAtual} = 5:
+     set {_items::%{_index}%::particle} to "netherite"
+
+ #Dropa itens
+ loop {_items::*}:
+  set {_itemindex} to loop-index
+  set {_itemparticle} to {_items::%{_itemindex}%::particle}
+
+  drop loop-value at location of {_p}
+
+  clear {_itementity}
+  if item of last dropped item is loop-value:
+   set {_itementity} to last dropped item
+
+  run section in background with {_itementity}, {_itemparticle}: #Skript-reflect dependent
+   loop 20 times:
+    if {_itementity} is alive:
+     if {_itemparticle} is "ferro":
+      make 10 of firework particle at location of {_itementity} with offset vector(0.05, 0.05, 0.05) with extra 0.05 
+     else if {_itemparticle} is "ouro":
+      make 10 of small flame particle at location of {_itementity} with offset vector(0.05, 0.05, 0.05) with extra 0.05 
+     else if {_itemparticle} is "diamante":
+      make 10 of soul fire flame particle at location of {_itementity} with offset vector(0.05, 0.05, 0.05) with extra 0.05 
+     else if {_itemparticle} is "esmeralda":
+      make 10 of glow particle at location of {_itementity} with offset vector(0.05, 0.05, 0.05) with extra 0.05
+     else if {_itemparticle} is "netherite":
+      make 10 of dragon breath particle at location of {_itementity} with offset vector(0.05, 0.05, 0.05) with extra 0.05 
+     wait 1 tick
+    else:
+     stop loop
+
+#Eventos
+On eat of cookie:
+ if IsLootkeyFerro(event-item) is true:#FERRO
+  RandomDropLootKey(1, event-player)
+
+ if IsLootkeyOuro(event-item) is true:#OURO
+  loop 2 times:
+   RandomDropLootKey(loop-number, event-player)
+
+ if IsLootkeyDiamante(event-item) is true:#DIAMANTE
+  loop 3 times:
+   RandomDropLootKey(loop-number, event-player)
+
+ if IsLootkeyEsmeralda(event-item) is true:#ESMERALDA
+  loop 4 times:
+   RandomDropLootKey(loop-number, event-player)
+
+ if IsLootkeyNetherite(event-item) is true:#NETHERITE
+  loop 5 times:
+   send "netherite" to player
+   RandomDropLootKey(loop-number, event-player)
+
+
+#####################################
+#         MINIGAME
+#####################################
+options:
+  modelworld: "DominanceModel" #{@modelworld}
+  dynamicworld: "Dominancegame" #{@dynamicworld}
+  
+#Funções
+function criarmapa():
+ execute console command "mv clone %{@modelworld}% %{@dynamicworld}%"
+ execute console command "execute in minecraft:dominancegame run fill 30 116 30 -30 122 -30 air"
+ execute console command "execute in minecraft:dominancegame run mv gamerule set doDaylightCycle true %{@dynamicworld}%"
+ 
+ #Custom items
+ set {eventoDominance::LootKeys::ferro} to glowing cookie named "&7&lLoot Signal" with lore "&7Raridade: &7&lFerro"
+ set max stack size of {eventoDominance::LootKeys::ferro} to 99
+ set custom model data of {eventoDominance::LootKeys::ferro} to 9001
+ apply food component to {eventoDominance::LootKeys::ferro}:
+  nutrition: 0
+  saturation: 3
+  can_always_eat: true
+
+ set {eventoDominance::LootKeys::ouro} to glowing cookie named "&6&lLoot Signal" with lore "&7Raridade: &6&lOuro"
+ set max stack size of {eventoDominance::LootKeys::ouro} to 99
+ set custom model data of {eventoDominance::LootKeys::ouro} to 9002
+ apply food component to {eventoDominance::LootKeys::ouro}:
+  nutrition: 0
+  saturation: 3
+  can_always_eat: true
+
+ set {eventoDominance::LootKeys::diamante} to glowing cookie named "&b&lLoot Signal" with lore "&7Raridade: &b&lDiamante"
+ set max stack size of {eventoDominance::LootKeys::diamante} to 99
+ set custom model data of {eventoDominance::LootKeys::diamante} to 9003
+ apply food component to {eventoDominance::LootKeys::diamante}:
+  nutrition: 0
+  saturation: 3
+  can_always_eat: true
+ 
+ set {eventoDominance::LootKeys::esmeralda} to glowing cookie named "&a&lLoot Signal" with lore "&7Raridade: &a&lEsmeralda"
+ set max stack size of {eventoDominance::LootKeys::esmeralda} to 99
+ set custom model data of {eventoDominance::LootKeys::esmeralda} to 9004
+ apply food component to {eventoDominance::LootKeys::esmeralda}:
+  nutrition: 0
+  saturation: 3
+  can_always_eat: true
+ 
+ set {eventoDominance::LootKeys::netherite} to glowing cookie named "&d&lLoot Signal" with lore "&7Raridade: &d&lNetherite"
+ set max stack size of {eventoDominance::LootKeys::netherite} to 99
+ set custom model data of {eventoDominance::LootKeys::netherite} to 9005
+ apply food component to {eventoDominance::LootKeys::netherite}:
+  nutrition: 0
+  saturation: 3
+  can_always_eat: true
+
+ #Coordenadas
+ wait 3 seconds
+ set {_world} to world named "Dominancegame"
+ set {eventoDominance::spawnspots::1} to location(-346,96,366, {_world})
+ set {eventoDominance::spawnspots::2} to location(380,55,-155, {_world})
+ set {eventoDominance::spawnspots::3} to location(-375,59,197, {_world})
+ set {eventoDominance::spawnspots::4} to location(289,57,-12, {_world})
+ set {eventoDominance::spawnspots::5} to location(268,57,-312, {_world})
+ set {eventoDominance::spawnspots::6} to location(-401,15,-457, {_world})
+ set {eventoDominance::spawnspots::7} to location(1,55,-483, {_world})
+ set {eventoDominance::spawnspots::8} to location(3,55,490, {_world})
+ set {eventoDominance::spawnspots::9} to location(414,38,479, {_world})
+ set {eventoDominance::spawnspots::10} to location(472,15,6, {_world})
+ set {eventoDominance::spawnspots::11} to location(-480,63,15, {_world})
+ set {eventoDominance::spawnspots::12} to location(-155,-9,57, {_world})
+ set {eventoDominance::spawnspots::13} to location(133,64,-71, {_world})
+ set {eventoDominance::spawnspots::14} to location(90,152,88, {_world})
+ set {eventoDominance::spawnspots::15} to location(-1,65,-41, {_world})
+ set {eventoDominance::spawnspots::16} to location(0,64,39, {_world})
+ set {eventoDominance::spawnspots::17} to location(352,80,352, {_world})
+ set {eventoDominance::spawnspots::18} to location(113,92,-385, {_world})
+ set {eventoDominance::spawnspots::19} to location(-188,55,-222, {_world})
+ set {eventoDominance::spawnspots::20} to location(374,82,-381, {_world})
+ set {eventoDominance::spawnspots::21} to location(331,55,210, {_world})
+ set {eventoDominance::spawnspots::22} to location(0,59,378, {_world})
+ set {eventoDominance::spawnspots::23} to location(226,55,373, {_world})
+ set {eventoDominance::spawnspots::24} to location(-218,56,395, {_world})
+ set {eventoDominance::spawnspots::25} to location(-280,69,-334, {_world})
+ set {eventoDominance::spawnspots::26} to location(-1,59,186, {_world})
+ set {eventoDominance::spawnspots::27} to location(427,55,129, {_world})
+ set {eventoDominance::spawnspots::28} to location(-4,60,-191, {_world})
+ set {eventoDominance::spawnspots::29} to location(-89,153,-90, {_world})
+ set {eventoDominance::spawnspots::30} to location(-417,55,-109, {_world})
+ set {eventoDominance::spawnspots::31} to location(-458,15,415, {_world})
+ set {eventoDominance::spawnspots::32} to location(75,92,-290, {_world})
+
+function atualizabarreira():
+
+ #Identifica quantos players estão no jogo
+ set {_qtdplayers} to 0
+ loop {eventoDominance::players::*}:
+  if loop-value is offline player:
+   if {eventoDominance::players::%loop-value%::ingame} is true:
+    add 1 to {_qtdplayers}
+  
+ #calcula tamanho da barreira
+ clear {_tamanho}
+ if {_qtdplayers} = 1:
+  set {_tamanho} to {_qtdplayers} * 1000
+ else:
+  set {_tamanho} to {_qtdplayers} * 25
+
+ set {eventoDominance::barreira} to {_tamanho} / 2
+ execute console command "execute in minecraft:dominancegame run mv worldborder set %{_tamanho}% -1 %{@dynamicworld}%"
+
+
+function aleatorizaspawn():
+ clear {_spawnsvalidos::*}
+ set {_barreira} to {eventoDominance::barreira}
+ #procura por spawns dentro da barreira
+ loop {eventoDominance::spawnspots::*}:
+  set {_loc} to loop-value
+  set {_x} to round(x-coordinate of {_loc})
+  set {_z} to round(z-coordinate of {_loc})
+
+  if abs({_x}) > {_barreira}:
+   continue
+  if abs({_z}) > {_barreira}:
+   continue
+  add {_loc} to {_spawnsvalidos::*}
+
+ set {_maxspawns} to size of {_spawnsvalidos::*}
+ if {_maxspawns} < 2: #Precisa haver pelomenos 2 spawns
+  loop all players in world {@modelworld}:
+   send "&cO jogo não pôde ser iniciado pois não há jogadores o suficiente!" to loop-player
+  send "&cEvento Dominance não pôde ser iniciado pois não há jogadores o suficiente!" to console
+  
+  wait 2 seconds
+  execute console command "dominance end"
+  stop
+
+ set {_loops} to min({_maxspawns}, 10)
+
+ clear {_selectedspawns::*}
+ loop {_loops} times:
+  #Escolhe spawn aleatório
+  set {_escolha} to random element out of {_spawnsvalidos::*}
+  if {_escolha} is set:
+   add {_escolha} to {_selectedspawns::*}
+   remove {_escolha} from {_spawnsvalidos::*}
+
+ set {_tpcount} to 1   
+ #Teleporta player 
+ loop {eventoDominance::players::*}:
+  if {eventoDominance::players::%loop-value%::ingame} is true:
+   if {eventoDominance::players::%loop-value%::teleported} is not set:
+
+    set {eventoDominance::players::%loop-value%::teleported} to true
+    set {_destino} to {_selectedspawns::%{_tpcount}%}
+    teleport loop-value to {_destino}
+
+    add 1 to {_tpcount}
+    if {_tpcount} > {_loops}:
+     set {_tpcount} to 1
+
+function avisaplayers(tempo: number):
+ loop all players:
+  #Avisa players fora do evento
+  #Avisa players dentro do evento
+  if world of loop-player is {@modelworld}:
+   send title "" to loop-player
+   send subtitle "&aComeça em &b%{_tempo}%&as!" to loop-player
+
+function DominanceTempoWaiting(tempo: number):
+ set {_contador} to {_tempo}
+
+ # Contagem regressiva
+ while {eventoDominance::State} is "waiting":
+  if {_contador} = 40:
+   avisaplayers({_contador})
+  if {_contador} = 30:
+   avisaplayers({_contador})
+  if {_contador} = 20:
+   avisaplayers({_contador})
+  if {_contador} = 10:
+   avisaplayers({_contador})
+  if {_contador} <= 5:
+   avisaplayers({_contador})
+
+  wait 1 second
+  subtract 1 from {_contador}
+
+  #INICIA O JOGO
+  if {_contador} <= 0:
+   set {eventoDominance::State} to "ongoing"
+   atualizabarreira()
+   DominanceTempoOngoing(2400) #segundos - 40 mins #######################################
+   stop loop
+
+function DominanceTempoOngoing(tempo: number):
+ aleatorizaspawn()
+ set {_contador} to {_tempo}
+ 
+function RestauraPlayerEndGame(p: player):
+ #Restaurar o player
+ #Inventário
+ clear {_p}'s inventory
+ loop {eventoDominance::players::%{_p}%::playersaveinv::*}:
+  set {_slot} to loop-index parsed as number
+  set slot {_slot} of {_p} to loop-value
+ 
+ set helmet of {_p} to {eventoDominance::players::%{_p}%::playersaveinv::helmet}
+ set chestplate of {_p} to {eventoDominance::players::%{_p}%::playersaveinv::chestplate}
+ set leggings of {_p} to {eventoDominance::players::%{_p}%::playersaveinv::leggings}
+ set boots of {_p} to {eventoDominance::players::%{_p}%::playersaveinv::boots}
+ set off hand of {_p} to {eventoDominance::players::%{_p}%::playersaveinv::offhand}
+
+ #Nível e exp
+ set level of {_p} to {eventoDominance::players::%{_p}%::playersaveexp::level}
+ set experience of {_p} to {eventoDominance::players::%{_p}%::playersaveexp::exp}
+ #Gamemode survival
+ set gamemode of {_p} to survival
+
+ #Limpar Flags do player
+ delete {eventoDominance::players::%{_p}%}
+ delete {eventoDominance::players::%{_p}%::*}
+
+#Iniciar Minigame
+command /Dominance [<text>]:
+ trigger:
+  #Entrar no Minigame
+  if arg-1 is not set:
+   if {eventoDominance::players::%player%::ingame} is true:
+    send "&cVocê já entrou no jogo!"
+    stop
+   if {eventoDominance::players::%player%::ingame} is false:
+    send "&cAguarde o próximo jogo!"
+    stop
+
+   if {eventoDominance::State} is "waiting":
+    # Salva localização
+    set {eventoDominance::players::%player%::playersaveloc} to location of player
+    
+    # Salva inventário e xp
+    loop 36 times:
+     set {_slot} to loop-number -1
+     set {eventoDominance::players::%player%::playersaveinv::%{_slot}%} to slot {_slot} of player's inventory
+
+    set {eventoDominance::players::%player%::playersaveinv::helmet} to helmet of player
+    set {eventoDominance::players::%player%::playersaveinv::chestplate} to chestplate of player
+    set {eventoDominance::players::%player%::playersaveinv::leggings} to leggings of player
+    set {eventoDominance::players::%player%::playersaveinv::boots} to boots of player
+    set {eventoDominance::players::%player%::playersaveinv::offhand} to off hand of player
+    
+    set {eventoDominance::players::%player%::playersaveexp::level} to level of player
+    set {eventoDominance::players::%player%::playersaveexp::exp} to experience of player
+    set {eventoDominance::players::%player%} to player
+    set {eventoDominance::players::%player%::ingame} to true
+    wait 2 tick
+
+    clear player's inventory
+    clear level of player
+    clear experience of player
+    clear potion effects of player
+    give player spyglass
+    teleport player to location(0,117,0, world "dominancemodel")
+
+   else if {eventoDominance::State} is not set:
+    send "&co evento Dominance não está em atividade." to player
+
+   else if {eventoDominance::State} is not "waiting":
+    send "&cO evento já começou!" to player
+
+  # Comandos admnistrativos ############################################################
+  if arg-1 is "start": #-Começa evento
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+
+   if {eventoDominance::State} is not set:
+    send "&aEvento iniciado" to player
+    send "&aEvento iniciado" to console
+    set {eventoDominance::State} to "waiting"
+    DominanceTempoWaiting(60)
+    criarmapa()
+
+   else:
+    send "&cO evento já foi iniciado" to player
+
+
+  if arg-1 is "end": #-Termina evento
+   if player is set:
+    if player is not op:
+     send "&cVocê não tem permissão!" to player
+     stop
+
+   if {eventoDominance::State} is set:
+    loop all players:
+     if world of loop-player is {@dynamicworld} or {@modelworld}:
+      # Teleporta player
+      if {eventoDominance::players::%loop-player%::playersaveloc} is set:
+       teleport loop-player to {eventoDominance::players::%loop-player%::playersaveloc}
+
+       # Restaurar Player
+       RestauraPlayerEndGame(loop-player)
+
+      else:
+       teleport loop-player to spawn point of world "world"
+     
+    execute console command "mv delete %{@dynamicworld}% --remove-players"
+
+    #Limpar flags #Lembrar depois de identificar se o player saiu do jogo, e nao voltou, para nao limpar os dados deles até ele voltar
+    delete {eventoDominance::*}
+
+    send "&cEvento terminado" to player
+    send "&cEvento terminado" to console
+   else:
+    send "&cNão há evento em execução" to player
+ 
+
+    
+
+on tab complete of "/Dominance":
+ if player is op:
+  set tab completions for position 1 to "start" and "end"
+
+#teste
+command /Dominancedebug:
+ trigger:
+  give player {eventoDominance::LootKeys::*}
+  send {eventoDominance::players::%player%} to player
+  send {eventoDominance::players::%player%::playersaveloc} to player
+  #send {eventoDominance::players::%player%::playersaveinv::*} to player

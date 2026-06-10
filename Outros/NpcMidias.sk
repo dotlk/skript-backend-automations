@@ -1,0 +1,202 @@
+on join:
+ # Cria ícones
+ set {_youtube.owner} to paper named "&cYoutube" with lore "&7Yarchuww"
+ set item model of {_youtube.owner} to "minecraft:yt_owner"
+
+ set {_instagram.owner} to paper named "&6Instagram" with lore "&7Yarchuww"
+ set item model of {_instagram.owner} to "minecraft:ig_owner"
+
+ set {_tiktok.owner} to paper named "&9Tiktok" with lore "&7Yarchuww"
+ set item model of {_tiktok.owner} to "minecraft:tt_owner"
+
+ set {_youtube.liz} to paper named "&cYoutube" with lore "&7Lizcarolyn"
+ set item model of {_youtube.liz} to "minecraft:yt_liz"
+
+ set {_instagram.liz} to paper named "&6Instagram" with lore "&7Lizcarolyn"
+ set item model of {_instagram.liz} to "minecraft:ig_liz"
+
+ set {_tiktok.liz} to paper named "&9Tiktok" with lore "&7Lizcarolyn"
+ set item model of {_tiktok.liz} to "minecraft:tt_liz"
+
+ set {_twitch.liz} to paper named "&dTwitch" with lore "&7Lizcarolyn"
+ set item model of {_twitch.liz} to "minecraft:tw_liz"
+
+
+ set {_youtube.serpens} to paper named "&cYoutube" with lore "&7Serpens"
+ set item model of {_youtube.serpens} to "minecraft:yt_serpens"
+
+ set {_instagram.serpens} to paper named "&6Instagram" with lore "&7Serpens"
+ set item model of {_instagram.serpens} to "minecraft:ig_serpens"
+
+ set {_tiktok.serpens} to paper named "&9Tiktok" with lore "&7Serpens"
+ set item model of {_tiktok.serpens} to "minecraft:tt_serpens"
+
+ set {_twitch.serpens} to paper named "&dTwitch" with lore "&7Serpens"
+ set item model of {_twitch.serpens} to "minecraft:tw_serpens"
+
+ set {_site.serpens} to paper named "&bSite" with lore "&7Serpens"
+ set item model of {_site.serpens} to "minecraft:st_serpens"
+
+ set {_discord.serpens} to paper named "&5Discord" with lore "&7Serpens"
+ set item model of {_discord.serpens} to "minecraft:dc_serpens"
+
+ # Cria menu midias #####
+ set metadata tag "MenuMidias" of player to chest inventory with 3 rows named "&4&lRedes sociais"
+ set slot 6 of metadata tag "MenuMidias" of player to glowing {_youtube.owner}
+ set slot 7 of metadata tag "MenuMidias" of player to glowing {_instagram.owner}
+ set slot 8 of metadata tag "MenuMidias" of player to glowing {_tiktok.owner}
+
+ set slot 0 of metadata tag "MenuMidias" of player to glowing {_youtube.liz}
+ set slot 1 of metadata tag "MenuMidias" of player to glowing {_instagram.liz}
+ set slot 2 of metadata tag "MenuMidias" of player to glowing {_tiktok.liz}
+ set slot 9 of metadata tag "MenuMidias" of player to glowing {_twitch.liz}
+
+ set slot 15 of metadata tag "MenuMidias" of player to glowing {_youtube.serpens}
+ set slot 16 of metadata tag "MenuMidias" of player to glowing {_instagram.serpens}
+ set slot 17 of metadata tag "MenuMidias" of player to glowing {_tiktok.serpens}
+ set slot 24 of metadata tag "MenuMidias" of player to glowing {_twitch.serpens}
+ set slot 25 of metadata tag "MenuMidias" of player to glowing {_site.serpens}
+ set slot 26 of metadata tag "MenuMidias" of player to glowing {_discord.serpens}
+
+ set {_slot} to 0
+ loop 53 times:
+  if {_slot} is 9:
+   add 1 to {_slot}
+   continue loop
+  else if {_slot} is 10:
+   add 1 to {_slot}
+   continue loop
+  else if {_slot} is 17:
+   add 1 to {_slot}
+   continue loop
+  else if {_slot} is 18:
+   add 1 to {_slot}
+   continue loop
+  else if {_slot} is 19:
+   add 1 to {_slot}
+   continue loop
+
+  if slot loop-value of metadata tag "MenuMidias" of player is air:
+   set slot loop-value of metadata tag "MenuMidias" of player to black stained glass pane
+  add 1 to {_slot}
+
+
+#Cliques Menu------------------------------------
+on inventory click:
+ #Não deixa player pegar ou colocar items ---BLOQUEIO DE CLIQUE---
+ if player's current inventory is (metadata tag "MenuMidias" of player):
+  cancel event
+
+ # MENUMIDIAS ###############################
+ if event-inventory = (metadata tag "MenuMidias" of player):
+  #Lógica dos botões
+  
+  # Youtube Owner #####################################
+  if index of event-slot is 6:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o &c&lYoutube&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.youtube.com/@yarchuw>&c&nClique aqui<reset>" to player
+  
+  # Instagram Owner #####################################
+  if index of event-slot is 7:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o &6&lInstagram&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.instagram.com/yarchuww/>&6&nClique aqui<reset>" to player
+  
+  # TikTok Owner #####################################
+  if index of event-slot is 8:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o &9&lTikTok&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.tiktok.com/@yarchuw>&9&nClique aqui<reset>" to player
+
+  # Youtube Liz #####################################
+  if index of event-slot is 0:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o &c&lYoutube&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://youtube.com/@carolynmine?si=cYtkd9CYtnuwzgc_>&c&nClique aqui<reset>" to player
+
+  # Instagram Liz #####################################
+  if index of event-slot is 1:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o &6&lInstagram&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.instagram.com/carolyn.exp?igsh=dDhpeGhrZWF5Mmt4>&6&nClique aqui<reset>" to player
+
+  # Tiktok Liz #####################################
+  if index of event-slot is 2:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o &9&lTikTok&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.tiktok.com/@carolyn.expp?is_from_webapp=1&sender_device=pc>&9&nClique aqui<reset>" to player
+
+  # Twitch Serpens #####################################
+  if index of event-slot is 9:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse a &d&lTwitch&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.twitch.tv/carolynexp>&d&nClique aqui<reset>" to player
+
+  # Youtube Serpens #####################################
+  if index of event-slot is 15:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o nosso &c&lYoutube&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.youtube.com/@Serpensbr>&c&nClique aqui<reset>" to player
+
+  # Instagram Serpens #####################################
+  if index of event-slot is 16:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o nosso &6&lInstagram&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.instagram.com/corpserpens/>&6&nClique aqui<reset>" to player
+
+  # Tiktok Serpens #####################################
+  if index of event-slot is 17:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o nosso &9&lTikTok&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.tiktok.com/@corpserpens>&9&nClique aqui<reset>" to player
+
+  # Twitch Serpens #####################################
+  if index of event-slot is 24:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse a nossa &d&lTwitch&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.twitch.tv/serpenscorp>&d&nClique aqui<reset>" to player
+  
+  # Site Serpens #####################################
+  if index of event-slot is 25:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o nosso &b&lWebSite&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://www.serpenscorp.com.br>&b&nClique aqui<reset>" to player
+
+  # Discord Serpens #####################################
+  if index of event-slot is 26:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   close inventory of player
+   send "&fAcesse o nosso &5&lDiscord&f!" to player
+   send action bar "&fLink enviado ao seu chat!"
+   send "<link:https://discord.gg/ruy7qUjxRF>&5&nClique aqui<reset>" to player
+
+command /midias <player>:
+ permission: npccmd.use
+ trigger:
+  open (metadata tag "MenuMidias" of arg-1) to arg-1
+  play sound "BLOCK_NOTE_BLOCK_PLING" for arg-1

@@ -1,0 +1,35 @@
+command /head <player>:
+ permission: op
+ trigger:
+  if tool of arg-1 is air:
+   send "&cVocê precisa segurar um item!" to arg-1
+   send "&cEste player precisa segurar um item!" to player
+   stop
+
+  set {_headitem} to helmet of arg-1
+  if {_headitem} is not air:
+   send "&cVocê precisa tirar seu capacete!" to arg-1
+   send "&cEste player precisa tirar seu capacete!" to player
+   stop
+
+  set {_item} to arg-1's tool
+  set helmet of arg-1 to {_item}
+  remove 1 of {_item} from arg-1's inventory
+  send "&aItem colocado na cabeça!" to arg-1
+  send "&aItem colocado na cabeça! de %arg-1%" to player
+
+
+command /mount <player> <player>:
+ permission: op
+ trigger:
+  if world of arg-1 is not world of arg-2:
+   send "&cOs jogadores precisam estar no mesmo mundo."
+   stop
+    
+  if distance between arg-1 and arg-2 is greater than 10:
+   send "&cplayers muito longe" to player
+   stop
+    
+  set vehicle of arg-1 to arg-2
+  send "&aVocê montou em %arg-2%!" to arg-1
+  send "&a%arg-1% montou em %arg-2%!" to player

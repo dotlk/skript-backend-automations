@@ -1,0 +1,60 @@
+#Coliseu skript
+#by kaerys
+
+on join:
+# Cria menu coliseu #####
+ set metadata tag "MenuColiseu" of player to chest inventory with 1 rows named "&cEntrar no coliseu?"
+ set slot 3 of metadata tag "MenuColiseu" of player to minecraft:lime_wool named "&a✔ SIM" with lore "&7Clique para entrar na arena."
+ set slot 5 of metadata tag "MenuColiseu" of player to minecraft:red_wool named "&c✖ NÃO" with lore "&7Clique para cancelar e voltar."
+
+
+#Cliques Menu------------------------------------
+on inventory click:
+ #Não deixa player pegar ou colocar items ---BLOQUEIO DE CLIQUE---
+ loop {Menus::*}:
+  if player's current inventory is (metadata tag "MenuColiseu" of player):
+   cancel event
+
+ if event-inventory = (metadata tag "MenuColiseu" of player) or (inventory of player):
+  if {MenuAberto::%player%} is true:
+   cancel event
+
+ if event-inventory = (metadata tag "MenuColiseu" of player):
+  #Lógica dos botões
+  # SIM #####################################
+  if index of event-slot is 3:
+   set {_coordenadas::1} to "83 117 -135"
+   set {_coordenadas::2} to "55 117 -163"
+   set {_coordenadas::3} to "83 117 -191"
+   set {_coordenadas::4} to "111 117 -163"
+   set {_coordenadas::5} to "83 119 -163"
+   set {_max} to size of {_coordenadas::*}
+   set {_escolhida} to random integer between 1 and {_max}
+   set {_coords::*} to split {_coordenadas::%{_escolhida}%} at " "
+   set {_loc} to location({_coords::1} parsed as number, {_coords::2} parsed as number, {_coords::3} parsed as number, world "world")
+   teleport player to {_loc}
+   play sound "BLOCK_NOTE_BLOCK_PLING" for player
+   send "&dVocê entrou no coliseu! Boa sorte..." to player
+
+  # NÃO #####################################
+  if index of event-slot is 5:
+   play sound "entity.cat.ambient" for player
+   close player's inventory
+
+
+command /entercoliseu <player>:
+ permission: npccmd.use
+ trigger: 
+  open (metadata tag "MenuColiseu" of arg-1) to arg-1
+
+command /leavecoliseu <player>:
+ permission: npccmd.use
+ trigger: 
+  if {combat::%uuid of arg-1%} is set:
+   play sound "entity.cat.ambient" for arg-1
+   send "&cVocê não pode sair durante o combate!" to arg-1
+  else:
+   play sound "BLOCK_NOTE_BLOCK_PLING" for arg-1  
+   teleport arg-1 to location(83.500, 117, -119.500, world named "world")
+
+

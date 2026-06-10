@@ -1,0 +1,655 @@
+# SERVER LEADERBOARD
+# By lKaerys :D
+# dependencies: PlaceholderAPI, SimpleClans, SkriptPlaceholders, Skologram, permSK
+
+# Contabiliza kills semanais
+on death of player:
+ if attacker is a player:
+  #se for staff, nao contabiliza
+  if attacker has permission "tab.staff":
+   stop
+  #Se for do mesmo clan, não contabiliza
+  set {_clanattacker} to value of placeholder "simpleclans_tag" for attacker
+  set {_clanvictim} to value of placeholder "simpleclans_tag" for victim
+  if {_clanattacker} is set:
+   if {_clanattacker} = {_clanvictim}:
+    stop
+
+  add 1 to {killsSemanais::%uuid of attacker%} 
+
+# Funções
+function FormataMoney(n: string):: string:
+ #FORMATA MONEY
+ set {_suffix::1} to ""
+ set {_suffix::2} to "K"
+ set {_suffix::3} to "M"
+ set {_suffix::4} to "B"
+ set {_suffix::5} to "T"
+ set {_suffix::6} to "Qa"
+ set {_suffix::7} to "Qi"
+ set {_suffix::8} to "Sx"
+ set {_suffix::9} to "Sp"
+ set {_suffix::10} to "Oc"
+
+ set {_value} to {_n} parsed as number
+ set {_index} to 1
+
+ while {_value} >= 1000:
+  if {_index} >= size of {_suffix::*}:
+   stop loop
+
+  set {_value} to {_value} / 1000
+  add 1 to {_index}
+ set {_value} to floor({_value} * 10) / 10
+
+ # - formatação final
+ return "%{_value}%%{_suffix::%{_index}%}%" 
+
+function AtualizaStatsDoPlayer(p: player):
+ set {_u} to uuid of {_p}
+ set {leaderboard::%{_u}%} to name of {_p}
+ if {killsSemanais::%{_u}%} is not set:
+  set {killsSemanais::%{_u}%} to 0
+  set {leaderboard::%{_u}%::kills} to {killsSemanais::%{_u}%}
+ else:
+  set {leaderboard::%{_u}%::kills} to {killsSemanais::%{_u}%}
+ set {leaderboard::%{_u}%::kdr} to value of placeholder "simpleclans_kdr" for {_p}
+ set {_clan} to value of placeholder "simpleclans_clan_color_tag" for {_p}
+ if {_clan} is not set:
+  set {leaderboard::%{_u}%::clan} to ""
+ else:
+  set {leaderboard::%{_u}%::clan} to {_clan}
+ set {leaderboard::%{_u}%::money} to value of placeholder "vault_eco_balance" for {_p}
+ if {_p} has permission "tab.staff":
+  set {leaderboard::%{_u}%::staff} to true
+ else:
+  delete {leaderboard::%{_u}%::staff}
+
+function AtualizaStatsDoClan(p: player, tag: string):
+ set {leaderboard::clans::%{_tag}%} to value of placeholder "simpleclans_clan_color_tag" for {_p}
+ set {leaderboard::clans::%{_tag}%::kdr} to value of placeholder "simpleclans_clan_total_kdr" for {_p}
+ set {leaderboard::clans::%{_tag}%::membrosqtd} to value of placeholder "simpleclans_clan_size" for {_p}
+ set {leaderboard::clans::%{_tag}%::membrosonline} to value of placeholder "simpleclans_clan_onlinemembers_count" for {_p}
+ set {leaderboard::clans::%{_tag}%::banco} to value of placeholder "simpleclans_clan_balance" for {_p}
+ if {_p} has permission "tab.staff":
+  set {leaderboard::clans::%{_tag}%::staff} to true
+ else:
+  delete {leaderboard::clans::%{_tag}%::staff} 
+
+function AtualizaHolographicLeaderboardPlayers():
+ #Cria leaderboard temporária
+ clear {_Templeaderboard::*} 
+ loop all indices of {leaderboard::*}:
+  # ignora staff na criação da lista
+  if {leaderboard::%loop-value%::staff} is true:
+   continue
+
+  #carrega dados
+  set {_kills} to {leaderboard::%loop-value%::kills} 
+  set {_dinheiro} to {leaderboard::%loop-value%::money} parsed as number
+  set {_kdr} to {leaderboard::%loop-value%::kdr} parsed as number
+      
+  #pontua cada player
+  set {_score} to ({_kills} * 2500) + ({_dinheiro} / 10) + ({_kdr} * 5000)
+  set {_Templeaderboard::%{_score}%::%loop-value%} to loop-value
+    
+ ################ Ordena pelos scores
+ loop all indices of {_Templeaderboard::*}:
+  add (loop-value parsed as number) to {_scoreslist::*}
+ sort {_scoreslist::*} in descending order
+ ################
+
+ loop 10 times: #Limpa o Holograma
+  execute console command "dh line remove leaderboard_players 1 2" 
+
+ #cria leaderboard dos top 10
+ set {_i} to 1
+ loop {_scoreslist::*}:
+  # limita a 10 entradas
+  if {_i} > 10:
+   stop loop
+  
+  loop {_Templeaderboard::%loop-value%::*}: # Se houver mais de um player com o mesmo score, ele não é excluido do leaderboard.
+   # limita a 10 entradas
+   if {_i} > 10:
+    stop loop
+    
+   # adquire o dono do score
+   clear {_uuid} 
+   set {_uuid} to loop-value-2
+
+   # ignora valor vazio de {_Templeaderboard}
+   if {leaderboard::%{_uuid}%} is not set:
+    continue
+
+   #gera leaderboard
+   set {_name} to {leaderboard::%{_uuid}%}
+   set {_kills} to {leaderboard::%{_uuid}%::kills}
+   set {_kdr} to {leaderboard::%{_uuid}%::kdr}
+   set {_clan} to {leaderboard::%{_uuid}%::clan}
+   set {_dinheiro} to {leaderboard::%{_uuid}%::money} 
+   set {_dinheiro} to FormataMoney({_dinheiro})
+
+   if {_i} = 1:
+    set {_position} to "&e&l1"
+
+    ##### NOMEIA O NOVO TOP1 #####
+    set {_player} to {_uuid} parsed as offline player
+    
+    if {TOP1.atual} is not {_uuid}:
+     execute console command "lp bulkupdate users delete ""permission == group.top1"""
+     wait 3 tick
+     
+     set {TOP1.atual} to {_uuid}
+     execute console command "lp user %{_player}% parent add top1"
+     execute console command "lp user %{_player}% parent switchprimarygroup top1"
+     send "&f[&c&l&nImperador&f] &r&cVocê é o novo Imperador!" to {_player}
+     play sound "entity.lightning_bolt.impact" to {_player}
+
+   else if {_i} = 2:
+    set {_position} to "&f&l2"
+   else if {_i} = 3:
+    set {_position} to "&c&l3"
+   else: 
+    set {_position} to {_i}
+
+   wait 1 tick
+   execute console command "dh line add leaderboard_players 1 &7&m<&r&7%{_position}%&7&m> &8[&r%{_clan}%&8]&7&m &8[&r%{_name}%&8] &cKills&7&m &7<&f%{_kills}%&7> &4KDR&7&m &7<&f%{_kdr}%&7> &a$&7&m &7<&6%{_dinheiro}%&7>"
+   add 1 to {_i}
+
+function AtualizaHolographicLeaderboardClans():
+ #cria leaderboard temporaria dos clans
+ clear {_Templeaderboard::clans::*}
+ loop all indices of {leaderboard::clans::*}:
+  # ignora clans staff na criação da lista
+  if {leaderboard::clans::%loop-value%::staff} is true:
+   continue
+
+  #carrega dados
+  set {_kdr} to {leaderboard::clans::%loop-value%::kdr} parsed as number
+  set {_membrosqtd} to {leaderboard::clans::%loop-value%::membrosqtd} parsed as number
+  set {_banco} to {leaderboard::clans::%loop-value%::banco} parsed as number
+    
+  #pontua cada clan
+  set {_score} to ({_kdr} * 1000) + ({_membrosqtd} * 500) + ({_banco} * 1)
+  set {_Templeaderboard::clans::%{_score}%::%loop-value%} to loop-value
+   
+ ########### Ordena a lista de clans usando o score
+ loop all indices of {_Templeaderboard::clans::*}:
+  add (loop-value parsed as number) to {_scoreslist::*}
+ sort {_scoreslist::*} in descending order
+ ################
+
+ loop 10 times: #Limpa o Holograma
+  execute console command "dh line remove leaderboard_clans 1 2" 
+
+ #cria leaderboard dos top 10
+ set {_i} to 1
+ loop {_scoreslist::*}:
+  # limita a 10 entradas
+  if {_i} > 10:
+   stop loop
+
+  loop {_Templeaderboard::clans::%loop-value%::*}: # Se houver mais de um clan com o mesmo score, ele não é excluido do leaderboard.
+   # limita a 10 entradas
+   if {_i} > 10:
+    stop loop
+
+   # adquire o dono do score
+   clear {_clantag} 
+   set {_clantag} to loop-value-2
+
+   # ignora valor vazio de {_Templeaderboard::clans}
+   if {leaderboard::clans::%{_clantag}%} is not set:
+    continue
+
+   #gera leaderboard
+   set {_tag} to {leaderboard::clans::%{_clantag}%}
+   set {_kdr} to {leaderboard::clans::%{_clantag}%::kdr}
+   set {_membrosqtd} to {leaderboard::clans::%{_clantag}%::membrosqtd}
+   set {_online} to {leaderboard::clans::%{_clantag}%::membrosonline}
+   set {_banco} to {leaderboard::clans::%{_clantag}%::banco} 
+   set {_banco} to FormataMoney({_banco})
+
+   if {_i} = 1:
+    set {_position} to "&e&l1"
+   else if {_i} = 2:
+    set {_position} to "&f&l2"
+   else if {_i} = 3:
+    set {_position} to "&c&l3"
+   else: 
+    set {_position} to {_i}
+
+   wait 1 tick
+   execute console command "dh line add leaderboard_clans 1 &7&m<&r&7%{_position}%&7&m> &8[&r%{_tag}%&8] &4KDR&7&m &7<&f%{_kdr}%&7> &bMembros&7&m &7<&f%{_membrosqtd}%&7> &a$&7&m &7<&6%{_banco}%&7>"   
+   add 1 to {_i}
+
+function AtualizaHolographicLeaderboardMoney():
+ #Cria leaderboard temporária
+ clear {_Templeaderboard::*} 
+ loop all indices of {leaderboard::*}:
+  # ignora staff na criação da lista
+  if {leaderboard::%loop-value%::staff} is true:
+   continue
+
+  #carrega dados
+  set {_dinheiro} to {leaderboard::%loop-value%::money} parsed as number
+      
+  #pontua cada player
+  set {_score} to {_dinheiro}
+  set {_Templeaderboard::%{_score}%::%loop-value%} to loop-value
+    
+ ################ Ordena pelos scores
+ loop all indices of {_Templeaderboard::*}:
+  add (loop-value parsed as number) to {_scoreslist::*}
+ sort {_scoreslist::*} in descending order
+ ################
+
+ loop 10 times: #Limpa o Holograma
+  execute console command "dh line remove leaderboard_money 1 2" 
+
+ #cria leaderboard dos top 10
+ set {_i} to 1
+ loop {_scoreslist::*}:
+  # limita a 10 entradas
+  if {_i} > 10:
+   stop loop
+  
+  loop {_Templeaderboard::%loop-value%::*}: # Se houver mais de um player com o mesmo score, ele não é excluido do leaderboard.
+   # limita a 10 entradas
+   if {_i} > 10:
+    stop loop
+    
+   # adquire o dono do score
+   clear {_uuid} 
+   set {_uuid} to loop-value-2
+
+   # ignora valor vazio de {_Templeaderboard}
+   if {leaderboard::%{_uuid}%} is not set:
+    continue
+
+   #gera leaderboard
+   set {_name} to {leaderboard::%{_uuid}%}
+   set {_clan} to {leaderboard::%{_uuid}%::clan}
+   set {_dinheiro} to {leaderboard::%{_uuid}%::money}
+   set {_dinheiro} to FormataMoney({_dinheiro})
+   
+   if {_i} = 1:
+    set {_position} to "&e&l1"
+
+    ##### NOMEIA O NOVO MAGNATA #####
+    set {_player} to {_uuid} parsed as offline player
+    
+    if {Magnata.atual} is not {_uuid}:
+     execute console command "lp bulkupdate users delete ""permission == group.magnata"""
+     wait 3 tick
+     
+     set {Magnata.atual} to {_uuid}
+     execute console command "lp user %{_player}% parent add magnata"
+     execute console command "lp user %{_player}% parent switchprimarygroup magnata"
+     send "&f[&6&l$ Top &a&lMagnata&f] &r&bVocê é o novo Magnata!" to {_player}
+     play sound "block.amethyst_cluster.break" to {_player}
+
+   else if {_i} = 2:
+    set {_position} to "&f&l2"
+   else if {_i} = 3:
+    set {_position} to "&c&l3"
+   else: 
+    set {_position} to {_i}
+
+   wait 1 tick
+   execute console command "dh line add leaderboard_money 1 &7&m<&r&7%{_position}%&7&m> &8[&r%{_clan}%&8]&7&m &8[&r%{_name}%&8] &a$&7&m &7<&6%{_dinheiro}%&7>"
+   add 1 to {_i}
+
+#se o magnata ou imperador entrar no server, avisa a todos
+On join:
+ if player doesn't have permission "tab.staff":
+  if player has permission "group.magnata":
+   loop all players:
+    send "&6O &a&lMagnata &f%player% &r&6Acaba de entrar no jogo! &d&lGG&6!" to loop-player
+    play sound "block.amethyst_cluster.break" to loop-player
+
+  else if player has permission "group.top1":
+   loop all players:
+    send "&eO &c&l&nImperador&r &f%player% &r&eAcaba de entrar no jogo! &d&lGG&6!" to loop-player
+    play sound "entity.lightning_bolt.impact" to loop-player
+
+  
+
+
+
+   
+# Atualiza Stats de todos os players online e clans a cada 5 minutos
+every 5 minutes:
+ set {_i} to 0
+ set {_c} to 0
+ clear {_ClansOnline::*} 
+ loop all players:
+  AtualizaStatsDoPlayer(loop-player)
+
+  set {_clantag} to value of placeholder "simpleclans_tag" for loop-player
+  if {_clantag} is set:
+
+   if {_ClansOnline::%{_clantag}%} is not set:
+    set {_ClansOnline::%{_clantag}%} to true 
+    AtualizaStatsDoClan(loop-player, {_clantag})   
+    add 1 to {_c}
+  add 1 to {_i}
+
+ AtualizaHolographicLeaderboardPlayers()
+ AtualizaHolographicLeaderboardClans()
+ AtualizaHolographicLeaderboardMoney()
+ send "&b[LEADERBOARD]&r Atualizou stats de %{_i}% players e %{_c}% clans para leaderboard." to console
+
+# COMANDOS ############################################## COMANDOS ############################################ COMANDOS ##########
+command /leaderboard [<text>]:
+ trigger:
+  if arg-1 is not set:
+   send "&cUso: /leaderboard players" to player
+   send "&c      /leaderboard clans" to player
+
+  if arg-1 is "players":   
+   send "&f&l👑 Top Players:" to player
+   #Cria leaderboard temporária
+   clear {_Templeaderboard::*} 
+   loop all indices of {leaderboard::*}:
+    # ignora staff na criação da lista
+    if {leaderboard::%loop-value%::staff} is true:
+     continue
+
+    #carrega dados
+    set {_kills} to {leaderboard::%loop-value%::kills} 
+    set {_dinheiro} to {leaderboard::%loop-value%::money} parsed as number
+    set {_kdr} to {leaderboard::%loop-value%::kdr} parsed as number
+      
+    #pontua cada player
+    set {_score} to ({_kills} * 2500) + ({_dinheiro} / 10) + ({_kdr} * 5000)
+    set {_Templeaderboard::%{_score}%::%loop-value%} to loop-value
+    
+   ################ Ordena pelos scores
+   loop all indices of {_Templeaderboard::*}:
+    add (loop-value parsed as number) to {_scoreslist::*}
+   sort {_scoreslist::*} in descending order
+   ################
+
+   #cria leaderboard dos top 10
+   set {_i} to 1
+   loop {_scoreslist::*}:
+    # limita a 10 entradas
+    if {_i} > 10:
+     stop loop
+    
+    loop {_Templeaderboard::%loop-value%::*}: # Se houver mais de um player com o mesmo score, ele não é excluido do leaderboard.
+     # limita a 10 entradas
+     if {_i} > 10:
+      stop loop
+
+     # adquire o dono do score
+     clear {_uuid} 
+     set {_uuid} to loop-value-2
+
+     # ignora valor vazio de {_Templeaderboard}
+     if {leaderboard::%{_uuid}%} is not set:
+      continue
+
+     #gera leaderboard
+     set {_name} to {leaderboard::%{_uuid}%}
+     set {_kills} to {leaderboard::%{_uuid}%::kills}
+     set {_kdr} to {leaderboard::%{_uuid}%::kdr}
+     set {_clan} to {leaderboard::%{_uuid}%::clan}
+     set {_dinheiro} to {leaderboard::%{_uuid}%::money}
+     set {_dinheiro} to FormataMoney({_dinheiro})
+
+     if {_i} = 1:
+      set {_position} to "&e&l1"
+     else if {_i} = 2:
+      set {_position} to "&f&l2"
+     else if {_i} = 3:
+      set {_position} to "&c&l3"
+     else: 
+      set {_position} to {_i}
+
+     send "&7&m<&r&7%{_position}%&7&m> &8[&r%{_clan}%&8]&7&m &8[&r%{_name}%&8] &cKills&7&m &7<&f%{_kills}%&7> &4KDR&7&m &7<&f%{_kdr}%&7> &a$&7&m &7<&6%{_dinheiro}%&7>" to player
+     add 1 to {_i}
+
+  if arg-1 is "clans":
+   send "&f&l⛨ Top Clans:" to player
+   #cria leaderboard temporaria dos clans
+   clear {_Templeaderboard::clans::*}
+   loop all indices of {leaderboard::clans::*}:
+    # ignora clans staff na criação da lista
+    if {leaderboard::clans::%loop-value%::staff} is true:
+     continue
+
+    #carrega dados
+    set {_kdr} to {leaderboard::clans::%loop-value%::kdr} parsed as number
+    set {_membrosqtd} to {leaderboard::clans::%loop-value%::membrosqtd} parsed as number
+    set {_banco} to {leaderboard::clans::%loop-value%::banco} parsed as number
+    
+    #pontua cada clan
+    set {_score} to ({_kdr} * 1000) + ({_membrosqtd} * 500) + ({_banco} * 1)
+    set {_Templeaderboard::clans::%{_score}%::%loop-value%} to loop-value
+   
+   ########### Ordena a lista de clans usando o score
+   loop all indices of {_Templeaderboard::clans::*}:
+    add (loop-value parsed as number) to {_scoreslist::*}
+   sort {_scoreslist::*} in descending order
+   ################
+
+   #cria leaderboard dos top 10
+   set {_i} to 1
+   loop {_scoreslist::*}:
+    # limita a 10 entradas
+    if {_i} > 10:
+     stop loop
+
+    loop {_Templeaderboard::clans::%loop-value%::*}: # Se houver mais de um clan com o mesmo score, ele não é excluido do leaderboard.
+     # limita a 10 entradas
+     if {_i} > 10:
+      stop loop
+
+     # adquire o dono do score
+     clear {_clantag} 
+     set {_clantag} to loop-value-2
+
+     # ignora valor vazio de {_Templeaderboard::clans}
+     if {leaderboard::clans::%{_clantag}%} is not set:
+      continue
+
+     #gera leaderboard
+     set {_tag} to {leaderboard::clans::%{_clantag}%}
+     set {_kdr} to {leaderboard::clans::%{_clantag}%::kdr}
+     set {_membrosqtd} to {leaderboard::clans::%{_clantag}%::membrosqtd}
+     set {_online} to {leaderboard::clans::%{_clantag}%::membrosonline}
+     set {_banco} to {leaderboard::clans::%{_clantag}%::banco}
+     set {_banco} to FormataMoney({_banco})
+
+     if {_i} = 1:
+      set {_position} to "&e&l1"
+     else if {_i} = 2:
+      set {_position} to "&f&l2"
+     else if {_i} = 3:
+      set {_position} to "&c&l3"
+     else: 
+      set {_position} to {_i}
+
+     send "&7&m<&r&7%{_position}%&7&m> &8[&r%{_tag}%&8] &4KDR&7&m &7<&f%{_kdr}%&7> &bMembros&7&m &7<&f%{_membrosqtd}%&7> &a$&7&m &7<&6%{_banco}%&7>" to player  
+     add 1 to {_i}
+on tab complete of "/leaderboard":
+ set tab completions for position 1 to "players" and "clans"
+
+command /moneytop:
+ trigger:
+  send "&6&l$ Top &a&lMagnata" to player
+  #Cria leaderboard temporária
+  clear {_Templeaderboard::*} 
+  loop all indices of {leaderboard::*}:
+   # ignora staff na criação da lista
+   if {leaderboard::%loop-value%::staff} is true:
+    continue
+
+   #carrega dados
+   set {_dinheiro} to {leaderboard::%loop-value%::money} parsed as number
+      
+   #pontua cada player
+   set {_score} to {_dinheiro}
+   set {_Templeaderboard::%{_score}%::%loop-value%} to loop-value
+    
+  ################ Ordena pelos scores
+  loop all indices of {_Templeaderboard::*}:
+   add (loop-value parsed as number) to {_scoreslist::*}
+  sort {_scoreslist::*} in descending order
+  ################
+
+  #cria leaderboard dos top 10
+  set {_i} to 1
+  loop {_scoreslist::*}:
+   # limita a 10 entradas
+   if {_i} > 10:
+    stop loop
+    
+   loop {_Templeaderboard::%loop-value%::*}: # Se houver mais de um player com o mesmo score, ele não é excluido do leaderboard.
+    # limita a 10 entradas
+    if {_i} > 10:
+     stop loop
+
+    # adquire o dono do score
+    clear {_uuid} 
+    set {_uuid} to loop-value-2
+
+    # ignora valor vazio de {_Templeaderboard}
+    if {leaderboard::%{_uuid}%} is not set:
+     continue
+
+    #gera leaderboard
+    set {_name} to {leaderboard::%{_uuid}%}
+    set {_clan} to {leaderboard::%{_uuid}%::clan}
+    set {_dinheiro} to {leaderboard::%{_uuid}%::money}
+    set {_dinheiro} to FormataMoney({_dinheiro})
+
+    if {_i} = 1:
+     set {_position} to "&e&l1"
+    else if {_i} = 2:
+     set {_position} to "&f&l2"
+    else if {_i} = 3:
+     set {_position} to "&c&l3"
+    else: 
+     set {_position} to {_i}
+
+    send "&7&m<&r&7%{_position}%&7&m> &8[&r%{_clan}%&8]&7&m &8[&r%{_name}%&8] &a$&7&m &7<&6%{_dinheiro}%&7>" to player
+    add 1 to {_i} 
+
+
+
+
+#checagem semanal
+on load:
+ if {ultimaReinicializacaoLB} is not set:
+  set {ultimaReinicializacaoLB} to now
+  
+#limpa leaderboard(players inativos e clans inativos) e kills semanalmente
+every 5 minutes:
+ if difference between now and {ultimaReinicializacaoLB} >= 7 days:
+  delete {leaderboard::*}
+  loop all indices of {leaderboard::*}: #leaderboard players
+   delete {leaderboard::%loop-value%}
+   delete {leaderboard::%loop-value%::*}
+  delete {killsSemanais::*} 
+  loop all indices of {leaderboard::clans::*}: #leaderboard clans
+   delete {leaderboard::clans::%loop-value%}
+   delete {leaderboard::clans::%loop-value%::*}
+  set {ultimaReinicializacaoLB} to now
+  send "&b[LEADERBOARD]&r Leaderboards e kills semanais resetados!" to console
+
+#Cria placeholder das kills semanais
+placeholderapi placeholder with the prefix "leaderboard":
+ if the identifier is "kills_semanais":
+  if {killsSemanais::%uuid of player%} is set: 
+   set the result to "%{killsSemanais::%uuid of player%}%"
+  else:
+   set the result to "0"
+   
+####################COMANDOS ADMINISTRATIVOS  
+
+command /updateleaderboard: #Força update do leaderboard
+ permission: op
+ trigger:
+  set {_i} to 0
+  set {_c} to 0
+  clear {_ClansOnline::*} 
+  loop all players:
+   AtualizaStatsDoPlayer(loop-player)
+
+   set {_clantag} to value of placeholder "simpleclans_tag" for loop-player
+   if {_clantag} is set:
+
+    if {_ClansOnline::%{_clantag}%} is not set:
+     set {_ClansOnline::%{_clantag}%} to true 
+     AtualizaStatsDoClan(loop-player, {_clantag})   
+     add 1 to {_c}
+   add 1 to {_i}
+
+  AtualizaHolographicLeaderboardPlayers()
+  AtualizaHolographicLeaderboardClans()
+  AtualizaHolographicLeaderboardMoney()
+  send "&b[LEADERBOARD]&r Atualizou stats de %{_i}% players e %{_c}% clans para leaderboard." to player
+
+command /resetleaderboard: #AVISO: ISSO IRÁ REMOVER TODOS OS CLANS ARMAZENADOS DA SEMANA
+ permission: op
+ trigger:
+  delete {leaderboard::*}
+  loop all indices of {leaderboard::*}: #leaderboard players
+   delete {leaderboard::%loop-value%}
+   delete {leaderboard::%loop-value%::*}
+  # delete {killsSemanais::*} #kills semanais dos players (desativado nesse comando admnistrativo)
+  loop all indices of {leaderboard::clans::*}: #leaderboard clans
+   delete {leaderboard::clans::%loop-value%}
+   delete {leaderboard::clans::%loop-value%::*}
+  set {ultimaReinicializacaoLB} to now
+  send "&b[LEADERBOARD]&r Leaderboards e kills semanais resetados!" to player
+
+command /kills [<text>] [<player>] [<text>]:
+ permission: op
+ trigger:
+  if arg-1 is not set:
+   send "&cUso: /kills add <player>" to player
+   send "&c      /kills remove <player> <qtd>" to player
+   send "&c      /kills clear <player>" to player
+   send "&c      /kills check <player>" to player
+
+  if arg-1 is "add":
+   if arg-3 is not set:
+    send "&c/kills add <player> <qtd>" to player
+   else:
+    set {_valor} to arg-3 parsed as integer
+    add {_valor} to {killsSemanais::%uuid of arg-2%}
+    send "&a+%arg-3% kill semanal para %arg-2%" to player
+    send "&aVocê recebeu +%arg-3% kills semanais por um staff." to arg-2
+
+  if arg-1 is "remove":
+   if arg-3 is not set:
+    send "&c/kills remove <player> <qtd>" to player
+   else:
+    set {_valor} to arg-3 parsed as integer
+    remove {_valor} from {killsSemanais::%uuid of arg-2%}
+    send "&c-%arg-3% kill semanal para %arg-2%" to player
+    send "&cVocê perdeu -%arg-3% kills semanais para um staff." to arg-2
+
+  if arg-1 is "clear":
+   if arg-2 is not set:
+    send "&c/kills clear <player>" to player
+   else:
+    delete {killsSemanais::%uuid of arg-2%}
+    send "&eKills semanais de %arg-2% resetadas" to player
+  
+  if arg-1 is "check":
+   if arg-2 is not set:
+    send "&c/kills check <player>" to player
+   else:
+    if {killsSemanais::%uuid of arg-2%} is not set:
+     send "&aO player &f%arg-2% &apossui 0 kills esta semana." to player
+    else:
+     send "&aO player &f%arg-2% &apossui %{killsSemanais::%uuid of arg-2%}% kills esta semana." to player
+
+on tab complete of "/kills":
+ set tab completions for position 1 to "add" and "remove" and "clear" and "check"
