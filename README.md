@@ -5,8 +5,8 @@ A repository designed to store custom Skript code — a high-level scripting lan
 ## 📌 About this Repository
 This repository serves as a professional portfolio containing a collection of production-ready backend systems, automation scripts, and custom game mechanics. All code here was designed, optimized, and deployed during my time managing the backend infrastructure and development of a successful Minecraft server project.
 
-  ###Note 1: The great majority of the codes were written for Portuguese Brazilian Language. 
-  ###Note 2: All the code present in this repository works in it's own context, for personal use it may need to be modified.
+  ### Note 1: The great majority of the codes were written for Portuguese Brazilian Language. 
+  ### Note 2: All the code present in this repository works in it's own context, for personal use it may need to be modified.
 
 ## 🛠️ Technical Focus
 * **Performance & Optimization:** Scripts developed with extreme care regarding server resource consumption, ensuring a stable 20 TPS (Ticks Per Second) under heavy player load.
